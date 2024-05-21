@@ -15,12 +15,11 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  Switch,
   styled,
   TextField,
 } from "@mui/material";
 import { createProfile, patchProfile } from "@/services/cmds";
-import { BaseDialog, Notice } from "@/components/base";
+import { BaseDialog, Notice, Switch } from "@/components/base";
 import { version } from "@root/package.json";
 import { FileInput } from "./file-input";
 
@@ -48,11 +47,10 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
     const { control, watch, register, ...formIns } = useForm<IProfileItem>({
       defaultValues: {
         type: "remote",
-        name: "Remote File",
+        name: "",
         desc: "",
         url: "",
         option: {
-          // user_agent: "",
           with_proxy: false,
           self_proxy: false,
         },
@@ -99,6 +97,11 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
           }
           if (form.option?.update_interval) {
             form.option.update_interval = +form.option.update_interval;
+          } else {
+            delete form.option?.update_interval;
+          }
+          if (form.option?.user_agent === "") {
+            delete form.option.user_agent;
           }
           const name = form.name || `${form.type} file`;
           const item = { ...form, name };
@@ -265,6 +268,17 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
               render={({ field }) => (
                 <StyledBox>
                   <InputLabel>{t("Use Clash Proxy")}</InputLabel>
+                  <Switch checked={field.value} {...field} color="primary" />
+                </StyledBox>
+              )}
+            />
+
+            <Controller
+              name="option.danger_accept_invalid_certs"
+              control={control}
+              render={({ field }) => (
+                <StyledBox>
+                  <InputLabel>{t("Accept Invalid Certs (Danger)")}</InputLabel>
                   <Switch checked={field.value} {...field} color="primary" />
                 </StyledBox>
               )}

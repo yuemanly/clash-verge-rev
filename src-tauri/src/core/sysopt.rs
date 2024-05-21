@@ -3,9 +3,10 @@ use anyhow::{anyhow, Result};
 use auto_launch::{AutoLaunch, AutoLaunchBuilder};
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
+use std::env::current_exe;
 use std::sync::Arc;
 use sysproxy::Sysproxy;
-use tauri::{async_runtime::Mutex as TokioMutex, utils::platform::current_exe};
+use tauri::async_runtime::Mutex as TokioMutex;
 
 pub struct Sysopt {
     /// current system proxy setting
@@ -23,7 +24,7 @@ pub struct Sysopt {
 }
 
 #[cfg(target_os = "windows")]
-static DEFAULT_BYPASS: &str = "localhost;127.*;192.168.*;10.*;172.16.*;<local>";
+static DEFAULT_BYPASS: &str = "localhost;127.*;192.168.*;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*;<local>";
 #[cfg(target_os = "linux")]
 static DEFAULT_BYPASS: &str = "localhost,127.0.0.1,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12,::1";
 #[cfg(target_os = "macos")]
@@ -58,30 +59,25 @@ impl Sysopt {
             )
         };
 
-        let registry_mode = {
-            let verge = Config::verge();
-            let verge = verge.latest();
-            verge.system_proxy_registry_mode.unwrap_or(false)
-        };
-
         let current = Sysproxy {
             enable,
             host: String::from("127.0.0.1"),
             port,
-            bypass: bypass.unwrap_or(DEFAULT_BYPASS.into()),
+            bypass: match bypass {
+                Some(bypass) => {
+                    if bypass.is_empty() {
+                        DEFAULT_BYPASS.into()
+                    } else {
+                        bypass
+                    }
+                }
+                None => DEFAULT_BYPASS.into(),
+            },
         };
 
         if enable {
             let old = Sysproxy::get_system_proxy().ok();
-
-            if registry_mode {
-                #[cfg(windows)]
-                current.set_system_proxy_with_registry()?;
-                #[cfg(not(windows))]
-                current.set_system_proxy()?;
-            } else {
-                current.set_system_proxy()?;
-            }
+            current.set_system_proxy()?;
 
             *self.old_sysproxy.lock() = old;
             *self.cur_sysproxy.lock() = Some(current);
@@ -111,17 +107,19 @@ impl Sysopt {
                 verge.system_proxy_bypass.clone(),
             )
         };
-
-        let registry_mode = {
-            let verge = Config::verge();
-            let verge = verge.latest();
-            verge.system_proxy_registry_mode.unwrap_or(false)
-        };
-
         let mut sysproxy = cur_sysproxy.take().unwrap();
 
         sysproxy.enable = enable;
-        sysproxy.bypass = bypass.unwrap_or(DEFAULT_BYPASS.into());
+        sysproxy.bypass = match bypass {
+            Some(bypass) => {
+                if bypass.is_empty() {
+                    DEFAULT_BYPASS.into()
+                } else {
+                    bypass
+                }
+            }
+            None => DEFAULT_BYPASS.into(),
+        };
 
         let port = Config::verge()
             .latest()
@@ -129,14 +127,7 @@ impl Sysopt {
             .unwrap_or(Config::clash().data().get_mixed_port());
         sysproxy.port = port;
 
-        if registry_mode {
-            #[cfg(windows)]
-            sysproxy.set_system_proxy_with_registry()?;
-            #[cfg(not(windows))]
-            sysproxy.set_system_proxy()?;
-        } else {
-            sysproxy.set_system_proxy()?;
-        }
+        sysproxy.set_system_proxy()?;
         *cur_sysproxy = Some(sysproxy);
 
         Ok(())
@@ -146,11 +137,7 @@ impl Sysopt {
     pub fn reset_sysproxy(&self) -> Result<()> {
         let mut cur_sysproxy = self.cur_sysproxy.lock();
         let mut old_sysproxy = self.old_sysproxy.lock();
-        let registry_mode = {
-            let verge = Config::verge();
-            let verge = verge.latest();
-            verge.system_proxy_registry_mode.unwrap_or(false)
-        };
+
         let cur_sysproxy = cur_sysproxy.take();
 
         if let Some(mut old) = old_sysproxy.take() {
@@ -165,26 +152,12 @@ impl Sysopt {
                 log::info!(target: "app", "reset proxy to the original proxy");
             }
 
-            if registry_mode {
-                #[cfg(windows)]
-                old.set_system_proxy_with_registry()?;
-                #[cfg(not(windows))]
-                old.set_system_proxy()?;
-            } else {
-                old.set_system_proxy()?;
-            }
+            old.set_system_proxy()?;
         } else if let Some(mut cur @ Sysproxy { enable: true, .. }) = cur_sysproxy {
             // 没有原代理，就按现在的代理设置disable即可
             log::info!(target: "app", "reset proxy by disabling the current proxy");
             cur.enable = false;
-            if registry_mode {
-                #[cfg(windows)]
-                cur.set_system_proxy_with_registry()?;
-                #[cfg(not(windows))]
-                cur.set_system_proxy()?;
-            } else {
-                cur.set_system_proxy()?;
-            }
+            cur.set_system_proxy()?;
         } else {
             log::info!(target: "app", "reset proxy with no action");
         }
@@ -194,11 +167,8 @@ impl Sysopt {
 
     /// init the auto launch
     pub fn init_launch(&self) -> Result<()> {
-        let enable = { Config::verge().latest().enable_auto_launch };
-        let enable = enable.unwrap_or(false);
-
         let app_exe = current_exe()?;
-        let app_exe = dunce::canonicalize(app_exe)?;
+        // let app_exe = dunce::canonicalize(app_exe)?;
         let app_name = app_exe
             .file_stem()
             .and_then(|f| f.to_str())
@@ -250,28 +220,6 @@ impl Sysopt {
             .set_app_path(&app_path)
             .build()?;
 
-        // 避免在开发时将自启动关了
-        #[cfg(feature = "verge-dev")]
-        if !enable {
-            return Ok(());
-        }
-
-        #[cfg(target_os = "macos")]
-        {
-            if enable && !auto.is_enabled().unwrap_or(false) {
-                // 避免重复设置登录项
-                let _ = auto.disable();
-                auto.enable()?;
-            } else if !enable {
-                let _ = auto.disable();
-            }
-        }
-
-        #[cfg(not(target_os = "macos"))]
-        if enable {
-            auto.enable()?;
-        }
-
         *self.auto_launch.lock() = Some(auto);
 
         Ok(())
@@ -303,11 +251,7 @@ impl Sysopt {
         use tokio::time::{sleep, Duration};
 
         let guard_state = self.guard_state.clone();
-        let registry_mode = {
-            let verge = Config::verge();
-            let verge = verge.latest();
-            verge.system_proxy_registry_mode.unwrap_or(false)
-        };
+
         tauri::async_runtime::spawn(async move {
             // if it is running, exit
             let mut state = guard_state.lock().await;
@@ -355,16 +299,19 @@ impl Sysopt {
                     enable: true,
                     host: "127.0.0.1".into(),
                     port,
-                    bypass: bypass.unwrap_or(DEFAULT_BYPASS.into()),
+                    bypass: match bypass {
+                        Some(bypass) => {
+                            if bypass.is_empty() {
+                                DEFAULT_BYPASS.into()
+                            } else {
+                                bypass
+                            }
+                        }
+                        None => DEFAULT_BYPASS.into(),
+                    },
                 };
-                if registry_mode {
-                    #[cfg(windows)]
-                    log_err!(sysproxy.set_system_proxy_with_registry());
-                    #[cfg(not(windows))]
-                    log_err!(sysproxy.set_system_proxy());
-                } else {
-                    log_err!(sysproxy.set_system_proxy());
-                }
+
+                log_err!(sysproxy.set_system_proxy());
             }
 
             let mut state = guard_state.lock().await;

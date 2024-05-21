@@ -5,13 +5,20 @@ import { createRequire } from "module";
 import { getOctokit, context } from "@actions/github";
 
 const target = process.argv.slice(2)[0];
+const alpha = process.argv.slice(2)[1];
 
 const ARCH_MAP = {
-  "i686-pc-windows-msvc": "x86",
   "x86_64-pc-windows-msvc": "x64",
+  "i686-pc-windows-msvc": "x86",
   "aarch64-pc-windows-msvc": "arm64",
 };
 
+const PROCESS_MAP = {
+  x64: "x64",
+  ia32: "x86",
+  arm64: "arm64",
+};
+const arch = target ? ARCH_MAP[target] : PROCESS_MAP[process.arch];
 /// Script for ci
 /// 打包绿色版/便携版 (only Windows)
 async function resolvePortable() {
@@ -41,7 +48,7 @@ async function resolvePortable() {
   const packageJson = require("../package.json");
   const { version } = packageJson;
 
-  const zipFile = `Clash.Verge_${version}_${ARCH_MAP[target]}_portable.zip`;
+  const zipFile = `Clash.Verge_${version}_${arch}_portable.zip`;
   zip.writeZip(zipFile);
 
   console.log("[INFO]: create portable zip successfully");
@@ -53,13 +60,24 @@ async function resolvePortable() {
 
   const options = { owner: context.repo.owner, repo: context.repo.repo };
   const github = getOctokit(process.env.GITHUB_TOKEN);
-
-  console.log("[INFO]: upload to ", process.env.TAG_NAME || `v${version}`);
+  const tag = alpha ? "alpha" : process.env.TAG_NAME || `v${version}`;
+  console.log("[INFO]: upload to ", tag);
 
   const { data: release } = await github.rest.repos.getReleaseByTag({
     ...options,
-    tag: process.env.TAG_NAME || `v${version}`,
+    tag,
   });
+
+  let assets = release.assets.filter((x) => {
+    return x.name === zipFile;
+  });
+  if (assets.length > 0) {
+    let id = assets[0].id;
+    await github.rest.repos.deleteReleaseAsset({
+      ...options,
+      asset_id: id,
+    });
+  }
 
   console.log(release.name);
 

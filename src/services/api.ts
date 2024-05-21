@@ -1,3 +1,4 @@
+import axiosTauriApiAdapter from "axios-tauri-api-adapter";
 import axios, { AxiosInstance } from "axios";
 import { getClashInfo } from "./cmds";
 
@@ -25,6 +26,7 @@ export const getAxios = async (force: boolean = false) => {
   } catch {}
 
   axiosIns = axios.create({
+    adapter: axiosTauriApiAdapter,
     baseURL: `http://${server}`,
     headers: secret ? { Authorization: `Bearer ${secret}` } : {},
     timeout: 15000,
@@ -75,9 +77,13 @@ export const getRules = async () => {
 };
 
 /// Get Proxy delay
-export const getProxyDelay = async (name: string, url?: string) => {
+export const getProxyDelay = async (
+  name: string,
+  url?: string,
+  timeout?: number
+) => {
   const params = {
-    timeout: 10000,
+    timeout: timeout || 10000,
     url: url || "http://1.1.1.1",
   };
   const instance = await getAxios();
@@ -107,7 +113,6 @@ export const getProxies = async () => {
     getProxiesInner(),
     getProxyProviders(),
   ]);
-
   // provider name map
   const providerMap = Object.fromEntries(
     Object.entries(providerRecord).flatMap(([provider, item]) =>
@@ -131,24 +136,27 @@ export const getProxies = async () => {
 
   const { GLOBAL: global, DIRECT: direct, REJECT: reject } = proxyRecord;
 
-  let groups: IProxyGroupItem[] = [];
+  let groups = Object.values(proxyRecord)
+    .filter((each) => each.name !== "GLOBAL" && each.all)
+    .map((each) => ({
+      ...each,
+      all: each.all!.map((item) => generateItem(item)),
+    }));
 
   if (global?.all) {
-    groups = global.all
+    let globalGroups = global.all
       .filter((name) => proxyRecord[name]?.all)
       .map((name) => proxyRecord[name])
       .map((each) => ({
         ...each,
         all: each.all!.map((item) => generateItem(item)),
       }));
-  } else {
-    groups = Object.values(proxyRecord)
-      .filter((each) => each.name !== "GLOBAL" && each.all)
-      .map((each) => ({
-        ...each,
-        all: each.all!.map((item) => generateItem(item)),
-      }))
-      .sort((a, b) => b.name.localeCompare(a.name));
+    let globalNames = globalGroups.map((each) => each.name);
+    groups = groups
+      .filter((group) => {
+        return !globalNames.includes(group.name);
+      })
+      .concat(globalGroups);
   }
 
   const proxies = [direct, reject].concat(
@@ -234,4 +242,22 @@ export const deleteConnection = async (id: string) => {
 export const closeAllConnections = async () => {
   const instance = await getAxios();
   await instance.delete<any, any>(`/connections`);
+};
+
+// Get Group Proxy Delays
+export const getGroupProxyDelays = async (
+  groupName: string,
+  url?: string,
+  timeout?: number
+) => {
+  const params = {
+    timeout: timeout || 10000,
+    url: url || "http://1.1.1.1",
+  };
+  const instance = await getAxios();
+  const result = await instance.get(
+    `/group/${encodeURIComponent(groupName)}/delay`,
+    { params }
+  );
+  return result as any as Record<string, number>;
 };

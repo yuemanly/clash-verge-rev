@@ -14,9 +14,10 @@ import {
 import { FeaturedPlayListRounded } from "@mui/icons-material";
 import { viewProfile } from "@/services/cmds";
 import { Notice } from "@/components/base";
-import { EditorViewer } from "./editor-viewer";
+import { EditorViewer } from "@/components/profile/editor-viewer";
 import { ProfileBox } from "./profile-box";
 import { LogViewer } from "./log-viewer";
+import { ConfirmViewer } from "./confirm-viewer";
 
 interface Props {
   selected: boolean;
@@ -51,6 +52,7 @@ export const ProfileMore = (props: Props) => {
   const [anchorEl, setAnchorEl] = useState<any>(null);
   const [position, setPosition] = useState({ left: 0, top: 0 });
   const [fileOpen, setFileOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
 
   const onEditInfo = () => {
@@ -87,7 +89,13 @@ export const ProfileMore = (props: Props) => {
     { label: "Open File", handler: onOpenFile },
     { label: "To Top", show: showMove, handler: fnWrapper(onMoveTop) },
     { label: "To End", show: showMove, handler: fnWrapper(onMoveEnd) },
-    { label: "Delete", handler: fnWrapper(onDelete) },
+    {
+      label: "Delete",
+      handler: () => {
+        setAnchorEl(null);
+        setConfirmOpen(true);
+      },
+    },
   ];
 
   const disableMenu = [
@@ -95,7 +103,13 @@ export const ProfileMore = (props: Props) => {
     { label: "Edit Info", handler: onEditInfo },
     { label: "Edit File", handler: onEditFile },
     { label: "Open File", handler: onOpenFile },
-    { label: "Delete", handler: fnWrapper(onDelete) },
+    {
+      label: "Delete",
+      handler: () => {
+        setAnchorEl(null);
+        setConfirmOpen(true);
+      },
+    },
   ];
 
   const boxStyle = {
@@ -152,7 +166,7 @@ export const ProfileMore = (props: Props) => {
                   size="small"
                   edge="start"
                   color="error"
-                  title="Console"
+                  title={t("Script Console")}
                   onClick={() => setLogOpen(true)}
                 >
                   <FeaturedPlayListRounded fontSize="inherit" />
@@ -163,7 +177,7 @@ export const ProfileMore = (props: Props) => {
                 size="small"
                 edge="start"
                 color="inherit"
-                title="Console"
+                title={t("Script Console")}
                 onClick={() => setLogOpen(true)}
               >
                 <FeaturedPlayListRounded fontSize="inherit" />
@@ -178,17 +192,6 @@ export const ProfileMore = (props: Props) => {
               {itemData.desc}
             </Typography>
           )}
-
-          <Typography
-            noWrap
-            component="span"
-            title={`Updated Time: ${parseExpire(itemData.updated)}`}
-            style={{ fontSize: 14 }}
-          >
-            {!!itemData.updated
-              ? dayjs(itemData.updated! * 1000).fromNow()
-              : ""}
-          </Typography>
         </Box>
       </ProfileBox>
 
@@ -211,7 +214,17 @@ export const ProfileMore = (props: Props) => {
             <MenuItem
               key={item.label}
               onClick={item.handler}
-              sx={{ minWidth: 120 }}
+              sx={[
+                { minWidth: 120 },
+                (theme) => {
+                  return {
+                    color:
+                      item.label === "Delete"
+                        ? theme.palette.error.main
+                        : undefined,
+                  };
+                },
+              ]}
               dense
             >
               {t(item.label)}
@@ -220,12 +233,23 @@ export const ProfileMore = (props: Props) => {
       </Menu>
 
       <EditorViewer
-        uid={uid}
+        mode="profile"
+        property={uid}
         open={fileOpen}
-        mode={type === "merge" ? "yaml" : "javascript"}
+        language={type === "merge" ? "yaml" : "javascript"}
+        schema={type === "merge" ? "merge" : undefined}
         onClose={() => setFileOpen(false)}
       />
-
+      <ConfirmViewer
+        title="Confirm deletion"
+        message="This operation is not reversible"
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          onDelete();
+          setConfirmOpen(false);
+        }}
+      />
       {selected && (
         <LogViewer
           open={logOpen}

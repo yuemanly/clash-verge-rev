@@ -1,9 +1,11 @@
 {
+  "$schema": "../node_modules/@tauri-apps/cli/schema.json",
   "tauri": {
     "systemTray": {
-      "iconPath": "icons/tray-icon.png"
+      "iconPath": "icons/tray-icon.ico"
     },
     "bundle": {
+      "identifier": "io.github.clash-verge-rev.clash-verge-rev",
       "targets": ["nsis", "updater"],
       "windows": {
         "certificateThumbprint": null,
@@ -17,7 +19,9 @@
           "displayLanguageSelector": true,
           "installerIcon": "icons/icon.ico",
           "languages": ["SimpChinese", "English"],
-          "license": "../LICENSE"
+          "license": "../LICENSE",
+          "installMode": "perMachine",
+          "template": "./template/installer.nsi"
         }
       }
     }

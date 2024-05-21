@@ -20,6 +20,9 @@ fn main() -> std::io::Result<()> {
         return Ok(());
     }
 
+    #[cfg(target_os = "linux")]
+    std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+
     crate::log_err!(init::init_config());
 
     #[allow(unused_mut)]
@@ -55,6 +58,11 @@ fn main() -> std::io::Result<()> {
             cmds::get_verge_config,
             cmds::patch_verge_config,
             cmds::test_delay,
+            cmds::get_app_dir,
+            cmds::copy_icon_file,
+            cmds::download_icon_cache,
+            cmds::open_devtools,
+            cmds::exit_app,
             // cmds::update_hotkeys,
             // profile
             cmds::get_profiles,
@@ -105,34 +113,10 @@ fn main() -> std::io::Result<()> {
         tauri::RunEvent::ExitRequested { api, .. } => {
             api.prevent_exit();
         }
-        tauri::RunEvent::Exit => {
-            resolve::resolve_reset();
-            api::process::kill_children();
-            app_handle.exit(0);
-        }
         tauri::RunEvent::Updater(tauri::UpdaterEvent::Downloaded) => {
             resolve::resolve_reset();
             api::process::kill_children();
         }
-        #[cfg(target_os = "macos")]
-        tauri::RunEvent::WindowEvent { label, event, .. } => {
-            use tauri::Manager;
-
-            if label == "main" {
-                match event {
-                    tauri::WindowEvent::CloseRequested { api, .. } => {
-                        api.prevent_close();
-                        let _ = resolve::save_window_size_position(&app_handle, true);
-
-                        app_handle.get_window("main").map(|win| {
-                            let _ = win.hide();
-                        });
-                    }
-                    _ => {}
-                }
-            }
-        }
-        #[cfg(not(target_os = "macos"))]
         tauri::RunEvent::WindowEvent { label, event, .. } => {
             if label == "main" {
                 match event {

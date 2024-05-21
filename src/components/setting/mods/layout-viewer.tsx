@@ -1,16 +1,57 @@
-import { forwardRef, useImperativeHandle, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { List, Switch } from "@mui/material";
+import { List, Button, Select, MenuItem } from "@mui/material";
 import { useVerge } from "@/hooks/use-verge";
-import { BaseDialog, DialogRef, Notice } from "@/components/base";
+import { BaseDialog, DialogRef, Notice, Switch } from "@/components/base";
 import { SettingItem } from "./setting-comp";
 import { GuardState } from "./guard-state";
+import { open as openDialog } from "@tauri-apps/api/dialog";
+import { convertFileSrc } from "@tauri-apps/api/tauri";
+import { copyIconFile, getAppDir } from "@/services/cmds";
+import { join } from "@tauri-apps/api/path";
+import { exists } from "@tauri-apps/api/fs";
+import getSystem from "@/utils/get-system";
+
+const OS = getSystem();
 
 export const LayoutViewer = forwardRef<DialogRef>((props, ref) => {
   const { t } = useTranslation();
   const { verge, patchVerge, mutateVerge } = useVerge();
 
   const [open, setOpen] = useState(false);
+  const [commonIcon, setCommonIcon] = useState("");
+  const [sysproxyIcon, setSysproxyIcon] = useState("");
+  const [tunIcon, setTunIcon] = useState("");
+
+  useEffect(() => {
+    initIconPath();
+  }, []);
+
+  async function initIconPath() {
+    const appDir = await getAppDir();
+    const icon_dir = await join(appDir, "icons");
+    const common_icon_png = await join(icon_dir, "common.png");
+    const common_icon_ico = await join(icon_dir, "common.ico");
+    const sysproxy_icon_png = await join(icon_dir, "sysproxy.png");
+    const sysproxy_icon_ico = await join(icon_dir, "sysproxy.ico");
+    const tun_icon_png = await join(icon_dir, "tun.png");
+    const tun_icon_ico = await join(icon_dir, "tun.ico");
+    if (await exists(common_icon_ico)) {
+      setCommonIcon(common_icon_ico);
+    } else {
+      setCommonIcon(common_icon_png);
+    }
+    if (await exists(sysproxy_icon_ico)) {
+      setSysproxyIcon(sysproxy_icon_ico);
+    } else {
+      setSysproxyIcon(sysproxy_icon_png);
+    }
+    if (await exists(tun_icon_ico)) {
+      setTunIcon(tun_icon_ico);
+    } else {
+      setTunIcon(tun_icon_png);
+    }
+  }
 
   useImperativeHandle(ref, () => ({
     open: () => setOpen(true),
@@ -59,6 +100,187 @@ export const LayoutViewer = forwardRef<DialogRef>((props, ref) => {
             onGuard={(e) => patchVerge({ enable_memory_usage: e })}
           >
             <Switch edge="end" />
+          </GuardState>
+        </SettingItem>
+
+        <SettingItem label={t("Proxy Group Icon")}>
+          <GuardState
+            value={verge?.enable_group_icon ?? true}
+            valueProps="checked"
+            onCatch={onError}
+            onFormat={onSwitchFormat}
+            onChange={(e) => onChangeData({ enable_group_icon: e })}
+            onGuard={(e) => patchVerge({ enable_group_icon: e })}
+          >
+            <Switch edge="end" />
+          </GuardState>
+        </SettingItem>
+
+        <SettingItem label={t("Menu Icon")}>
+          <GuardState
+            value={verge?.menu_icon ?? "monochrome"}
+            onCatch={onError}
+            onFormat={(e: any) => e.target.value}
+            onChange={(e) => onChangeData({ menu_icon: e })}
+            onGuard={(e) => patchVerge({ menu_icon: e })}
+          >
+            <Select size="small" sx={{ width: 140, "> div": { py: "7.5px" } }}>
+              <MenuItem value="monochrome">{t("Monochrome")}</MenuItem>
+              <MenuItem value="colorful">{t("Colorful")}</MenuItem>
+              <MenuItem value="disable">{t("Disable")}</MenuItem>
+            </Select>
+          </GuardState>
+        </SettingItem>
+        {OS === "macos" && (
+          <SettingItem label={t("Tray Icon")}>
+            <GuardState
+              value={verge?.tray_icon ?? "monochrome"}
+              onCatch={onError}
+              onFormat={(e: any) => e.target.value}
+              onChange={(e) => onChangeData({ tray_icon: e })}
+              onGuard={(e) => patchVerge({ tray_icon: e })}
+            >
+              <Select
+                size="small"
+                sx={{ width: 140, "> div": { py: "7.5px" } }}
+              >
+                <MenuItem value="monochrome">{t("Monochrome")}</MenuItem>
+                <MenuItem value="colorful">{t("Colorful")}</MenuItem>
+              </Select>
+            </GuardState>
+          </SettingItem>
+        )}
+
+        <SettingItem label={t("Common Tray Icon")}>
+          <GuardState
+            value={verge?.common_tray_icon}
+            onCatch={onError}
+            onChange={(e) => onChangeData({ common_tray_icon: e })}
+            onGuard={(e) => patchVerge({ common_tray_icon: e })}
+          >
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={
+                verge?.common_tray_icon &&
+                commonIcon && (
+                  <img height="20px" src={convertFileSrc(commonIcon)} />
+                )
+              }
+              onClick={async () => {
+                if (verge?.common_tray_icon) {
+                  onChangeData({ common_tray_icon: false });
+                  patchVerge({ common_tray_icon: false });
+                } else {
+                  const path = await openDialog({
+                    directory: false,
+                    multiple: false,
+                    filters: [
+                      {
+                        name: "Tray Icon Image",
+                        extensions: ["png", "ico"],
+                      },
+                    ],
+                  });
+                  if (path?.length) {
+                    await copyIconFile(`${path}`, "common");
+                    await initIconPath();
+                    onChangeData({ common_tray_icon: true });
+                    patchVerge({ common_tray_icon: true });
+                  }
+                }
+              }}
+            >
+              {verge?.common_tray_icon ? t("Clear") : t("Browse")}
+            </Button>
+          </GuardState>
+        </SettingItem>
+
+        <SettingItem label={t("System Proxy Tray Icon")}>
+          <GuardState
+            value={verge?.sysproxy_tray_icon}
+            onCatch={onError}
+            onChange={(e) => onChangeData({ sysproxy_tray_icon: e })}
+            onGuard={(e) => patchVerge({ sysproxy_tray_icon: e })}
+          >
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={
+                verge?.sysproxy_tray_icon &&
+                sysproxyIcon && (
+                  <img height="20px" src={convertFileSrc(sysproxyIcon)} />
+                )
+              }
+              onClick={async () => {
+                if (verge?.sysproxy_tray_icon) {
+                  onChangeData({ sysproxy_tray_icon: false });
+                  patchVerge({ sysproxy_tray_icon: false });
+                } else {
+                  const path = await openDialog({
+                    directory: false,
+                    multiple: false,
+                    filters: [
+                      {
+                        name: "Tray Icon Image",
+                        extensions: ["png", "ico"],
+                      },
+                    ],
+                  });
+                  if (path?.length) {
+                    await copyIconFile(`${path}`, "sysproxy");
+                    await initIconPath();
+                    onChangeData({ sysproxy_tray_icon: true });
+                    patchVerge({ sysproxy_tray_icon: true });
+                  }
+                }
+              }}
+            >
+              {verge?.sysproxy_tray_icon ? t("Clear") : t("Browse")}
+            </Button>
+          </GuardState>
+        </SettingItem>
+
+        <SettingItem label={t("Tun Tray Icon")}>
+          <GuardState
+            value={verge?.tun_tray_icon}
+            onCatch={onError}
+            onChange={(e) => onChangeData({ tun_tray_icon: e })}
+            onGuard={(e) => patchVerge({ tun_tray_icon: e })}
+          >
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={
+                verge?.tun_tray_icon &&
+                tunIcon && <img height="20px" src={convertFileSrc(tunIcon)} />
+              }
+              onClick={async () => {
+                if (verge?.tun_tray_icon) {
+                  onChangeData({ tun_tray_icon: false });
+                  patchVerge({ tun_tray_icon: false });
+                } else {
+                  const path = await openDialog({
+                    directory: false,
+                    multiple: false,
+                    filters: [
+                      {
+                        name: "Tray Icon Image",
+                        extensions: ["png", "ico"],
+                      },
+                    ],
+                  });
+                  if (path?.length) {
+                    await copyIconFile(`${path}`, "tun");
+                    await initIconPath();
+                    onChangeData({ tun_tray_icon: true });
+                    patchVerge({ tun_tray_icon: true });
+                  }
+                }
+              }}
+            >
+              {verge?.tun_tray_icon ? t("Clear") : t("Browse")}
+            </Button>
           </GuardState>
         </SettingItem>
       </List>

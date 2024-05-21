@@ -8,17 +8,12 @@ import {
   ListItem,
   ListItemText,
   styled,
-  Switch,
   TextField,
   Typography,
-  Tooltip,
 } from "@mui/material";
-import getSystem from "@/utils/get-system";
 import { useVerge } from "@/hooks/use-verge";
 import { getSystemProxy } from "@/services/cmds";
-import { BaseDialog, DialogRef, Notice } from "@/components/base";
-
-const OS = getSystem();
+import { BaseDialog, DialogRef, Notice, Switch } from "@/components/base";
 
 export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
   const { t } = useTranslation();
@@ -35,14 +30,12 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
     enable_proxy_guard,
     system_proxy_bypass,
     proxy_guard_duration,
-    system_proxy_registry_mode,
   } = verge ?? {};
 
   const [value, setValue] = useState({
     guard: enable_proxy_guard,
     bypass: system_proxy_bypass,
     duration: proxy_guard_duration ?? 10,
-    registryMode: system_proxy_registry_mode,
   });
 
   useImperativeHandle(ref, () => ({
@@ -52,7 +45,6 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
         guard: enable_proxy_guard,
         bypass: system_proxy_bypass,
         duration: proxy_guard_duration ?? 10,
-        registryMode: system_proxy_registry_mode,
       });
       getSystemProxy().then((p) => setSysproxy(p));
     },
@@ -61,7 +53,7 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
 
   const onSave = useLockFn(async () => {
     if (value.duration < 1) {
-      Notice.error("Proxy guard duration at least 1 seconds");
+      Notice.error(t("Proxy Daemon Duration Cannot be Less than 1 Second"));
       return;
     }
 
@@ -76,9 +68,6 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
     if (value.bypass !== system_proxy_bypass) {
       patch.system_proxy_bypass = value.bypass;
     }
-    if (value.registryMode !== system_proxy_registry_mode) {
-      patch.system_proxy_registry_mode = value.registryMode;
-    }
 
     try {
       await patchVerge(patch);
@@ -92,7 +81,7 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
     <BaseDialog
       open={open}
       title={t("System Proxy Setting")}
-      contentSx={{ width: 450, maxHeight: 500 }}
+      contentSx={{ width: 450, maxHeight: 300 }}
       okBtn={t("Save")}
       cancelBtn={t("Cancel")}
       onClose={() => setOpen(false)}
@@ -131,40 +120,22 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
 
         <ListItem sx={{ padding: "5px 2px", alignItems: "start" }}>
           <ListItemText primary={t("Proxy Bypass")} sx={{ padding: "3px 0" }} />
+        </ListItem>
+        <ListItem sx={{ padding: "5px 2px" }}>
           <TextField
             disabled={!enabled}
             size="small"
             autoComplete="off"
             multiline
-            rows={3}
-            sx={{ width: 280 }}
+            rows={4}
+            sx={{ width: "100%" }}
             value={value.bypass}
+            placeholder={sysproxy?.bypass || `-`}
             onChange={(e) =>
               setValue((v) => ({ ...v, bypass: e.target.value }))
             }
           />
         </ListItem>
-        {OS === "windows" && (
-          <Tooltip
-            title={
-              enabled
-                ? t("Please disable the system proxy")
-                : t("Using the registry instead of Windows API")
-            }
-          >
-            <ListItem sx={{ padding: "5px 2px" }}>
-              <ListItemText primary={t("Use Registry")} />
-              <Switch
-                edge="end"
-                disabled={enabled}
-                checked={value.registryMode}
-                onChange={(_, e) =>
-                  setValue((v) => ({ ...v, registryMode: e }))
-                }
-              />
-            </ListItem>
-          </Tooltip>
-        )}
       </List>
 
       <Box sx={{ mt: 2.5 }}>
@@ -186,7 +157,17 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
 
         <FlexBox>
           <Typography className="label">{t("Bypass")}</Typography>
-          <Typography className="value">{sysproxy?.bypass || "-"}</Typography>
+        </FlexBox>
+        <FlexBox>
+          <TextField
+            disabled={true}
+            size="small"
+            autoComplete="off"
+            multiline
+            rows={4}
+            sx={{ width: "100%" }}
+            value={sysproxy?.bypass || "-"}
+          />
         </FlexBox>
       </Box>
     </BaseDialog>

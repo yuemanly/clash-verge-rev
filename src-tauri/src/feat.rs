@@ -10,13 +10,19 @@ use crate::log_err;
 use crate::utils::resolve;
 use anyhow::{bail, Result};
 use serde_yaml::{Mapping, Value};
-use tauri::{AppHandle, ClipboardManager};
+use tauri::{AppHandle, ClipboardManager, Manager};
 
 // 打开面板
-pub fn open_dashboard() {
+pub fn open_or_close_dashboard() {
     let handle = handle::Handle::global();
     let app_handle = handle.app_handle.lock();
     if let Some(app_handle) = app_handle.as_ref() {
+        if let Some(window) = app_handle.get_window("main") {
+            if let Ok(true) = window.is_focused() {
+                let _ = window.close();
+                return;
+            }
+        }
         resolve::create_window(app_handle);
     }
 }
@@ -78,36 +84,6 @@ pub fn toggle_system_proxy() {
     });
 }
 
-// 打开系统代理
-pub fn enable_system_proxy() {
-    tauri::async_runtime::spawn(async {
-        match patch_verge(IVerge {
-            enable_system_proxy: Some(true),
-            ..IVerge::default()
-        })
-        .await
-        {
-            Ok(_) => handle::Handle::refresh_verge(),
-            Err(err) => log::error!(target: "app", "{err}"),
-        }
-    });
-}
-
-// 关闭系统代理
-pub fn disable_system_proxy() {
-    tauri::async_runtime::spawn(async {
-        match patch_verge(IVerge {
-            enable_system_proxy: Some(false),
-            ..IVerge::default()
-        })
-        .await
-        {
-            Ok(_) => handle::Handle::refresh_verge(),
-            Err(err) => log::error!(target: "app", "{err}"),
-        }
-    });
-}
-
 // 切换tun模式
 pub fn toggle_tun_mode() {
     let enable = Config::verge().data().enable_tun_mode;
@@ -126,42 +102,16 @@ pub fn toggle_tun_mode() {
     });
 }
 
-// 打开tun模式
-pub fn enable_tun_mode() {
-    tauri::async_runtime::spawn(async {
-        match patch_verge(IVerge {
-            enable_tun_mode: Some(true),
-            ..IVerge::default()
-        })
-        .await
-        {
-            Ok(_) => handle::Handle::refresh_verge(),
-            Err(err) => log::error!(target: "app", "{err}"),
-        }
-    });
-}
-
-// 关闭tun模式
-pub fn disable_tun_mode() {
-    tauri::async_runtime::spawn(async {
-        match patch_verge(IVerge {
-            enable_tun_mode: Some(false),
-            ..IVerge::default()
-        })
-        .await
-        {
-            Ok(_) => handle::Handle::refresh_verge(),
-            Err(err) => log::error!(target: "app", "{err}"),
-        }
-    });
-}
-
 /// 修改clash的订阅
 pub async fn patch_clash(patch: Mapping) -> Result<()> {
     Config::clash().draft().patch_config(patch.clone());
 
     match {
+        let redir_port = patch.get("redir-port");
+        let tproxy_port = patch.get("tproxy-port");
         let mixed_port = patch.get("mixed-port");
+        let socks_port = patch.get("socks-port");
+        let port = patch.get("port");
         let enable_random_port = Config::verge().latest().enable_random_port.unwrap_or(false);
         if mixed_port.is_some() && !enable_random_port {
             let changed = mixed_port.unwrap()
@@ -181,7 +131,11 @@ pub async fn patch_clash(patch: Mapping) -> Result<()> {
         };
 
         // 激活订阅
-        if mixed_port.is_some()
+        if redir_port.is_some()
+            || tproxy_port.is_some()
+            || mixed_port.is_some()
+            || socks_port.is_some()
+            || port.is_some()
             || patch.get("secret").is_some()
             || patch.get("external-controller").is_some()
         {
@@ -226,27 +180,42 @@ pub async fn patch_verge(patch: IVerge) -> Result<()> {
     let proxy_bypass = patch.system_proxy_bypass;
     let language = patch.language;
     let port = patch.verge_mixed_port;
-
+    #[cfg(target_os = "macos")]
+    let tray_icon = patch.tray_icon;
+    let common_tray_icon = patch.common_tray_icon;
+    let sysproxy_tray_icon = patch.sysproxy_tray_icon;
+    let tun_tray_icon = patch.tun_tray_icon;
+    #[cfg(not(target_os = "windows"))]
+    let redir_enabled = patch.verge_redir_enabled;
+    #[cfg(target_os = "linux")]
+    let tproxy_enabled = patch.verge_tproxy_enabled;
+    let socks_enabled = patch.verge_socks_enabled;
+    let http_enabled = patch.verge_http_enabled;
     match {
-        #[cfg(target_os = "windows")]
-        {
-            let service_mode = patch.enable_service_mode;
+        let service_mode = patch.enable_service_mode;
 
-            if service_mode.is_some() {
-                log::debug!(target: "app", "change service mode to {}", service_mode.unwrap());
+        if service_mode.is_some() {
+            log::debug!(target: "app", "change service mode to {}", service_mode.unwrap());
 
-                Config::generate()?;
-                CoreManager::global().run_core().await?;
-            } else if tun_mode.is_some() {
-                update_core_config().await?;
-            }
-        }
-
-        #[cfg(not(target_os = "windows"))]
-        if tun_mode.is_some() {
+            Config::generate()?;
+            CoreManager::global().run_core().await?;
+        } else if tun_mode.is_some() {
             update_core_config().await?;
         }
-
+        #[cfg(not(target_os = "windows"))]
+        if redir_enabled.is_some() {
+            Config::generate()?;
+            CoreManager::global().run_core().await?;
+        }
+        #[cfg(target_os = "linux")]
+        if tproxy_enabled.is_some() {
+            Config::generate()?;
+            CoreManager::global().run_core().await?;
+        }
+        if socks_enabled.is_some() || http_enabled.is_some() {
+            Config::generate()?;
+            CoreManager::global().run_core().await?;
+        }
         if auto_launch.is_some() {
             sysopt::Sysopt::global().update_launch()?;
         }
@@ -265,7 +234,16 @@ pub async fn patch_verge(patch: IVerge) -> Result<()> {
 
         if language.is_some() {
             handle::Handle::update_systray()?;
-        } else if system_proxy.or(tun_mode).is_some() {
+        } else if system_proxy.is_some()
+            || tun_mode.is_some()
+            || common_tray_icon.is_some()
+            || sysproxy_tray_icon.is_some()
+            || tun_tray_icon.is_some()
+        {
+            handle::Handle::update_systray_part()?;
+        }
+        #[cfg(target_os = "macos")]
+        if tray_icon.is_some() {
             handle::Handle::update_systray_part()?;
         }
 
@@ -345,7 +323,7 @@ pub fn copy_clash_env(app_handle: &AppHandle) {
 
     let sh =
         format!("export https_proxy={http_proxy} http_proxy={http_proxy} all_proxy={socks5_proxy}");
-    let cmd: String = format!("set http_proxy={http_proxy} \n set https_proxy={http_proxy}");
+    let cmd: String = format!("set http_proxy={http_proxy}\r\nset https_proxy={http_proxy}");
     let ps: String = format!("$env:HTTP_PROXY=\"{http_proxy}\"; $env:HTTPS_PROXY=\"{http_proxy}\"");
 
     let mut cliboard = app_handle.clipboard_manager();

@@ -32,6 +32,15 @@ interface IConfigData {
   "tproxy-port": number;
   "external-controller": string;
   secret: string;
+  tun: {
+    stack: string;
+    device: string;
+    "auto-route": boolean;
+    "auto-detect-interface": boolean;
+    "dns-hijack": string[];
+    "strict-route": boolean;
+    mtu: number;
+  };
 }
 
 interface IRuleItem {
@@ -55,6 +64,7 @@ interface IProxyItem {
   hidden?: boolean;
   icon?: string;
   provider?: string; // 记录是否来自provider
+  fixed?: string; // 记录固定(优先)的节点
 }
 
 type IProxyGroupItem = Omit<IProxyItem, "all"> & {
@@ -131,7 +141,11 @@ interface IConnections {
 
 interface IClashInfo {
   // status: string;
-  port?: number; // clash mixed port
+  mixed_port?: number; // clash mixed port
+  socks_port?: number; // clash socks port
+  redir_port?: number; // clash redir port
+  tproxy_port?: number; // clash tproxy port
+  port?: number; // clash http port
   server?: string; // external-controller
   secret?: string;
 }
@@ -155,6 +169,7 @@ interface IProfileItem {
     expire: number;
   };
   option?: IProfileOption;
+  home?: string;
 }
 
 interface IProfileOption {
@@ -162,6 +177,7 @@ interface IProfileOption {
   with_proxy?: boolean;
   self_proxy?: boolean;
   update_interval?: number;
+  danger_accept_invalid_certs?: boolean;
 }
 
 interface IProfilesConfig {
@@ -189,6 +205,12 @@ interface IVergeConfig {
   theme_mode?: "light" | "dark" | "system";
   traffic_graph?: boolean;
   enable_memory_usage?: boolean;
+  enable_group_icon?: boolean;
+  menu_icon?: "monochrome" | "colorful" | "disable";
+  tray_icon?: "monochrome" | "colorful";
+  common_tray_icon?: boolean;
+  sysproxy_tray_icon?: boolean;
+  tun_tray_icon?: boolean;
   enable_tun_mode?: boolean;
   enable_auto_launch?: boolean;
   enable_service_mode?: boolean;
@@ -196,10 +218,17 @@ interface IVergeConfig {
   enable_system_proxy?: boolean;
   enable_random_port?: boolean;
   verge_mixed_port?: number;
+  verge_socks_port?: number;
+  verge_redir_port?: number;
+  verge_tproxy_port?: number;
+  verge_port?: number;
+  verge_redir_enabled?: boolean;
+  verge_tproxy_enabled?: boolean;
+  verge_socks_enabled?: boolean;
+  verge_http_enabled?: boolean;
   enable_proxy_guard?: boolean;
   proxy_guard_duration?: number;
   system_proxy_bypass?: string;
-  system_proxy_registry_mode?: boolean;
   web_ui_list?: string[];
   hotkeys?: string[];
   theme_setting?: {
@@ -215,8 +244,9 @@ interface IVergeConfig {
     css_injection?: string;
   };
   auto_close_connection?: boolean;
+  auto_check_update?: boolean;
   default_latency_test?: string;
-  enable_clash_fields?: boolean;
+  default_latency_timeout?: number;
   enable_builtin_enhanced?: boolean;
   auto_log_clean?: 0 | 1 | 2 | 3;
   proxy_layout_column?: number;

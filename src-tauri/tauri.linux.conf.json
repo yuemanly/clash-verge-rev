@@ -1,13 +1,15 @@
 {
+  "$schema": "../node_modules/@tauri-apps/cli/schema.json",
   "tauri": {
     "systemTray": {
-      "iconPath": "icons/tray-icon.png"
+      "iconPath": "icons/tray-icon.ico"
     },
     "bundle": {
+      "identifier": "io.github.clash-verge-rev.clash-verge-rev",
       "targets": ["deb", "appimage", "updater"],
       "deb": {
         "depends": ["openssl"],
-        "desktopTemplate": "./clash-verge.desktop"
+        "desktopTemplate": "./template/clash-verge.desktop"
       }
     }
   }

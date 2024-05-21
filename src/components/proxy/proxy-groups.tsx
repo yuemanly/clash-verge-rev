@@ -6,6 +6,7 @@ import {
   providerHealthCheck,
   updateProxy,
   deleteConnection,
+  getGroupProxyDelays,
 } from "@/services/api";
 import { useProfiles } from "@/hooks/use-profiles";
 import { useVerge } from "@/hooks/use-verge";
@@ -25,13 +26,14 @@ export const ProxyGroups = (props: Props) => {
 
   const { verge } = useVerge();
   const { current, patchCurrent } = useProfiles();
+  const timeout = verge?.default_latency_timeout || 10000;
 
   const virtuosoRef = useRef<VirtuosoHandle>(null);
 
   // 切换分组的节点代理
   const handleChangeProxy = useLockFn(
     async (group: IProxyGroupItem, proxy: IProxyItem) => {
-      if (group.type !== "Selector" && group.type !== "Fallback") return;
+      if (!["Selector", "URLTest", "Fallback"].includes(group.type)) return;
 
       const { name, now } = group;
       await updateProxy(name, proxy.name);
@@ -83,7 +85,11 @@ export const ProxyGroups = (props: Props) => {
     }
 
     const names = proxies.filter((p) => !p!.provider).map((p) => p!.name);
-    await delayManager.checkListDelay(names, groupName);
+
+    await Promise.race([
+      delayManager.checkListDelay(names, groupName, timeout),
+      getGroupProxyDelays(groupName, delayManager.getUrl(groupName), timeout), // 查询group delays 将清除fixed(不关注调用结果)
+    ]);
 
     onProxies();
   });
@@ -116,7 +122,7 @@ export const ProxyGroups = (props: Props) => {
   return (
     <Virtuoso
       ref={virtuosoRef}
-      style={{ height: "100%" }}
+      style={{ height: "calc(100% - 16px)" }}
       totalCount={renderList.length}
       increaseViewportBy={256}
       itemContent={(index) => (

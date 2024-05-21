@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="./src/assets/image/logo.png" alt="Clash" width="128" />
+  <img src="./src-tauri/icons/icon.png" alt="Clash" width="128" />
   <br>
   Continuation of <a href="https://github.com/zzzgydi/clash-verge">Clash Verge</a>
   <br>
@@ -9,15 +9,23 @@
 A Clash Meta GUI based on <a href="https://github.com/tauri-apps/tauri">Tauri</a>.
 </h3>
 
-## Features
+## Preview
 
-- Since the clash core has been removed. The project no longer maintains the clash core, but only the Clash Meta core.
-- Profiles management and enhancement (by yaml and Javascript). [Doc](https://clash-verge-rev.github.io)
-- Simple UI and supports custom theme color.
-- Built-in support [Clash.Meta(mihomo)](https://github.com/MetaCubeX/mihomo) core.
-- System proxy setting and guard.
+| Dark                             | Light                             |
+| -------------------------------- | --------------------------------- |
+| ![预览](./docs/preview_dark.png) | ![预览](./docs/preview_light.png) |
 
-#### TG Group: [@clash_verge_rev](https://t.me/clash_verge_rev)
+## Install
+
+请到发布页面下载对应的安装包：[Release page](https://github.com/clash-verge-rev/clash-verge-rev/releases)<br>
+Go to the [release page](https://github.com/clash-verge-rev/clash-verge-rev/releases) to download the corresponding installation package<br>
+Supports Windows (x64/x86), Linux (x64/arm64) and macOS 10.15+ (intel/apple).
+
+### 安装说明和常见问题，请到[文档页](https://clash-verge-rev.github.io/)查看：[Doc](https://clash-verge-rev.github.io/)
+
+---
+
+### TG Group: [@clash_verge_rev](https://t.me/clash_verge_rev)
 
 ## Promotion
 
@@ -33,36 +41,17 @@ A Clash Meta GUI based on <a href="https://github.com/tauri-apps/tauri">Tauri</a
 - 解锁流媒体及 ChatGPT
 - 官网：https://狗狗加速.com
 
-## Preview
+## Features
 
-![preview](./docs/preview.gif)
-
-## Install
-
-Download from [release](https://github.com/clash-verge-rev/clash-verge-rev/releases). Supports Windows (x64/x86), Linux (x64/arm64) and macOS 10.15+ (intel/apple).
-
-- [Windows x64](https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v1.4.10/Clash.Verge_1.4.10_x64-setup.exe)
-- [Windows x86](https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v1.4.10/Clash.Verge_1.4.10_x86-setup.exe)
-- [Windows arm64](https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v1.4.10/Clash.Verge_1.4.10_arm64-setup.exe)
-
-- [macOS intel](https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v1.4.10/Clash.Verge_1.4.10_x64.dmg)
-- [macOS apple](https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v1.4.10/Clash.Verge_1.4.10_aarch64.dmg)
-
-- [Linux x64 AppImage](https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v1.4.10/clash-verge_1.4.10_amd64.AppImage)
-- [Linux x64 deb](https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v1.4.10/clash-verge_1.4.10_amd64.deb)
-- [Linux x86 AppImage](https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v1.4.10/clash-verge_1.4.10_i386.AppImage)
-- [Linux x86 deb](https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v1.4.10/clash-verge_1.4.10_i386.deb)
-- [Linux arm64 deb](https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v1.4.10/clash-verge_1.4.10_arm64.deb)
-
-Or you can build it yourself. Supports Windows, Linux and macOS 10.15+
-
-Notes: If you could not start the app on Windows, please check that you have [Webview2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section) installed.
+- Since the clash core has been removed. The project no longer maintains the clash core, but only the Clash Meta core.
+- Profiles management and enhancement (by yaml and Javascript). [Doc](https://clash-verge-rev.github.io)
+- Improved UI and supports custom theme color.
+- Built-in support [Clash.Meta(mihomo)](https://github.com/MetaCubeX/mihomo) core.
+- System proxy setting and guard.
 
 ### FAQ
 
-#### 1. **macOS** "Clash Verge" is damaged and can't be opened
-
-open the terminal and run `sudo xattr -r -d com.apple.quarantine /Applications/Clash\ Verge.app`
+Refer to [Doc FAQ Page](https://clash-verge-rev.github.io/faq/windows.html)
 
 ## Development
 
@@ -75,14 +64,6 @@ pnpm i
 pnpm run check
 pnpm dev
 ```
-
-## Todos
-
-> This keng is a little big...
-
-## Disclaimer
-
-This is a learning project for Rust practice.
 
 ## Contributions
 

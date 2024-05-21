@@ -2,14 +2,14 @@ use crate::{
     config::*,
     core::*,
     feat,
-    utils::{dirs, help},
+    utils::{dirs, help, resolve},
 };
 use crate::{ret_err, wrap_err};
 use anyhow::{Context, Result};
 use serde_yaml::Mapping;
 use std::collections::{HashMap, VecDeque};
 use sysproxy::Sysproxy;
-
+use tauri::{api, Manager};
 type CmdResult<T = ()> = Result<T, String>;
 
 #[tauri::command]
@@ -65,6 +65,7 @@ pub async fn patch_profiles_config(profiles: IProfiles) -> CmdResult {
     match CoreManager::global().update_config().await {
         Ok(_) => {
             handle::Handle::refresh_clash();
+            let _ = handle::Handle::update_systray_part();
             Config::profiles().apply();
             wrap_err!(Config::profiles().data().save_file())?;
             Ok(())
@@ -249,8 +250,9 @@ pub mod uwp {
 pub async fn clash_api_get_proxy_delay(
     name: String,
     url: Option<String>,
+    timeout: i32,
 ) -> CmdResult<clash_api::DelayRes> {
-    match clash_api::get_proxy_delay(name, url).await {
+    match clash_api::get_proxy_delay(name, url, timeout).await {
         Ok(res) => Ok(res),
         Err(err) => Err(err.to_string()),
     }
@@ -266,42 +268,95 @@ pub async fn test_delay(url: String) -> CmdResult<u32> {
     Ok(feat::test_delay(url).await.unwrap_or(10000u32))
 }
 
-#[cfg(windows)]
-pub mod service {
-    use super::*;
-    use crate::core::win_service;
+#[tauri::command]
+pub fn get_app_dir() -> CmdResult<String> {
+    let app_home_dir = wrap_err!(dirs::app_home_dir())?
+        .to_string_lossy()
+        .to_string();
+    Ok(app_home_dir)
+}
 
-    #[tauri::command]
-    pub async fn check_service() -> CmdResult<win_service::JsonResponse> {
-        wrap_err!(win_service::check_service().await)
+#[tauri::command]
+pub async fn download_icon_cache(url: String, name: String) -> CmdResult<String> {
+    let icon_cache_dir = wrap_err!(dirs::app_home_dir())?.join("icons").join("cache");
+    let icon_path = icon_cache_dir.join(name);
+    if !icon_cache_dir.exists() {
+        let _ = std::fs::create_dir_all(&icon_cache_dir);
     }
+    if !icon_path.exists() {
+        let response = wrap_err!(reqwest::get(url).await)?;
 
-    #[tauri::command]
-    pub async fn install_service() -> CmdResult {
-        wrap_err!(win_service::install_service().await)
+        let mut file = wrap_err!(std::fs::File::create(&icon_path))?;
+
+        let content = wrap_err!(response.bytes().await)?;
+        wrap_err!(std::io::copy(&mut content.as_ref(), &mut file))?;
     }
+    Ok(icon_path.to_string_lossy().to_string())
+}
+#[tauri::command]
+pub fn copy_icon_file(path: String, name: String) -> CmdResult<String> {
+    let file_path = std::path::Path::new(&path);
+    let icon_dir = wrap_err!(dirs::app_home_dir())?.join("icons");
+    if !icon_dir.exists() {
+        let _ = std::fs::create_dir_all(&icon_dir);
+    }
+    let ext = match file_path.extension() {
+        Some(e) => e.to_string_lossy().to_string(),
+        None => "ico".to_string(),
+    };
 
-    #[tauri::command]
-    pub async fn uninstall_service() -> CmdResult {
-        wrap_err!(win_service::uninstall_service().await)
+    let png_dest_path = icon_dir.join(format!("{name}.png"));
+    let ico_dest_path = icon_dir.join(format!("{name}.ico"));
+    let dest_path = icon_dir.join(format!("{name}.{ext}"));
+    if file_path.exists() {
+        std::fs::remove_file(png_dest_path).unwrap_or_default();
+        std::fs::remove_file(ico_dest_path).unwrap_or_default();
+        match std::fs::copy(file_path, &dest_path) {
+            Ok(_) => Ok(dest_path.to_string_lossy().to_string()),
+            Err(err) => Err(err.to_string()),
+        }
+    } else {
+        return Err("file not found".to_string());
     }
 }
 
-#[cfg(not(windows))]
+#[tauri::command]
+pub fn open_devtools(app_handle: tauri::AppHandle) {
+    if let Some(window) = app_handle.get_window("main") {
+        if !window.is_devtools_open() {
+            window.open_devtools();
+        } else {
+            window.close_devtools();
+        }
+    }
+}
+
+#[tauri::command]
+pub fn exit_app(app_handle: tauri::AppHandle) {
+    let _ = resolve::save_window_size_position(&app_handle, true);
+    resolve::resolve_reset();
+    api::process::kill_children();
+    app_handle.exit(0);
+    std::process::exit(0);
+}
+
 pub mod service {
     use super::*;
+    use crate::core::service;
 
     #[tauri::command]
-    pub async fn check_service() -> CmdResult {
-        Ok(())
+    pub async fn check_service() -> CmdResult<service::JsonResponse> {
+        wrap_err!(service::check_service().await)
     }
+
     #[tauri::command]
     pub async fn install_service() -> CmdResult {
-        Ok(())
+        wrap_err!(service::install_service().await)
     }
+
     #[tauri::command]
     pub async fn uninstall_service() -> CmdResult {
-        Ok(())
+        wrap_err!(service::uninstall_service().await)
     }
 }
 

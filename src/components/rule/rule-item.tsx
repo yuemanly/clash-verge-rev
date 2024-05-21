@@ -20,7 +20,7 @@ interface Props {
 }
 
 const parseColor = (text: string) => {
-  if (text === "REJECT") return "error.main";
+  if (text === "REJECT" || text === "REJECT-DROP") return "error.main";
   if (text === "DIRECT") return "text.primary";
 
   let sum = 0;
@@ -34,7 +34,7 @@ const RuleItem = (props: Props) => {
   const { index, value } = props;
 
   return (
-    <Item>
+    <Item sx={{ borderBottom: "1px solid var(--divider-color)" }}>
       <Typography
         color="text.secondary"
         variant="body2"

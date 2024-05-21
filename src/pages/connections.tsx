@@ -5,9 +5,9 @@ import {
   Button,
   IconButton,
   MenuItem,
-  Paper,
   Select,
-  TextField,
+  SelectProps,
+  styled,
 } from "@mui/material";
 import { useRecoilState } from "recoil";
 import { Virtuoso } from "react-virtuoso";
@@ -25,6 +25,9 @@ import {
   ConnectionDetailRef,
 } from "@/components/connection/connection-detail";
 import parseTraffic from "@/utils/parse-traffic";
+import { useCustomTheme } from "@/components/layout/use-custom-theme";
+import { BaseSearchBox } from "@/components/base/base-search-box";
+import { BaseStyledSelect } from "@/components/base/base-styled-select";
 
 const initConn = { uploadTotal: 0, downloadTotal: 0, connections: [] };
 
@@ -33,8 +36,9 @@ type OrderFunc = (list: IConnectionsItem[]) => IConnectionsItem[];
 const ConnectionsPage = () => {
   const { t, i18n } = useTranslation();
   const { clashInfo } = useClashInfo();
-
-  const [filterText, setFilterText] = useState("");
+  const { theme } = useCustomTheme();
+  const isDark = theme.palette.mode === "dark";
+  const [match, setMatch] = useState(() => (_: string) => true);
   const [curOrderOpt, setOrderOpt] = useState("Default");
   const [connData, setConnData] = useState<IConnections>(initConn);
 
@@ -43,7 +47,12 @@ const ConnectionsPage = () => {
   const isTableLayout = setting.layout === "table";
 
   const orderOpts: Record<string, OrderFunc> = {
-    Default: (list) => list,
+    Default: (list) =>
+      list.sort(
+        (a, b) =>
+          new Date(b.start || "0").getTime()! -
+          new Date(a.start || "0").getTime()!
+      ),
     "Upload Speed": (list) => list.sort((a, b) => b.curUpload! - a.curUpload!),
     "Download Speed": (list) =>
       list.sort((a, b) => b.curDownload! - a.curDownload!),
@@ -52,7 +61,7 @@ const ConnectionsPage = () => {
   const [filterConn, download, upload] = useMemo(() => {
     const orderFunc = orderOpts[curOrderOpt];
     let connections = connData.connections.filter((conn) =>
-      (conn.metadata.host || conn.metadata.destinationIP)?.includes(filterText)
+      match(conn.metadata.host || conn.metadata.destinationIP || "")
     );
 
     if (orderFunc) connections = orderFunc(connections);
@@ -63,7 +72,7 @@ const ConnectionsPage = () => {
       upload += x.upload;
     });
     return [connections, download, upload];
-  }, [connData, filterText, curOrderOpt]);
+  }, [connData, match, curOrderOpt]);
 
   const { connect, disconnect } = useWebsocket(
     (event) => {
@@ -106,7 +115,6 @@ const ConnectionsPage = () => {
 
   useEffect(() => {
     if (!clashInfo) return;
-
     const { server = "", secret = "" } = clashInfo;
     connect(`ws://${server}/connections?token=${encodeURIComponent(secret)}`);
 
@@ -125,9 +133,13 @@ const ConnectionsPage = () => {
       title={t("Connections")}
       contentStyle={{ height: "100%" }}
       header={
-        <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2 }}>
-          <Box sx={{ mx: 1 }}>Download: {parseTraffic(download)}</Box>
-          <Box sx={{ mx: 1 }}>Upload: {parseTraffic(upload)}</Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <Box sx={{ mx: 1 }}>
+            {t("Downloaded")}: {parseTraffic(download)}
+          </Box>
+          <Box sx={{ mx: 1 }}>
+            {t("Uploaded")}: {parseTraffic(upload)}
+          </Box>
           <IconButton
             color="inherit"
             size="small"
@@ -164,39 +176,29 @@ const ConnectionsPage = () => {
         }}
       >
         {!isTableLayout && (
-          <Select
-            size="small"
-            autoComplete="off"
+          <BaseStyledSelect
             value={curOrderOpt}
             onChange={(e) => setOrderOpt(e.target.value)}
-            sx={{
-              mr: 1,
-              width: i18n.language === "en" ? 190 : 120,
-              '[role="button"]': { py: 0.65 },
-            }}
           >
             {Object.keys(orderOpts).map((opt) => (
               <MenuItem key={opt} value={opt}>
                 <span style={{ fontSize: 14 }}>{t(opt)}</span>
               </MenuItem>
             ))}
-          </Select>
+          </BaseStyledSelect>
         )}
-
-        <TextField
-          hiddenLabel
-          fullWidth
-          size="small"
-          autoComplete="off"
-          spellCheck="false"
-          variant="outlined"
-          placeholder={t("Filter conditions")}
-          value={filterText}
-          onChange={(e) => setFilterText(e.target.value)}
-        />
+        <BaseSearchBox onSearch={(match) => setMatch(() => match)} />
       </Box>
 
-      <Box height="calc(100% - 50px)" sx={{ userSelect: "text" }}>
+      <Box
+        height="calc(100% - 65px)"
+        sx={{
+          userSelect: "text",
+          margin: "10px",
+          borderRadius: "8px",
+          bgcolor: isDark ? "#282a36" : "#ffffff",
+        }}
+      >
         {filterConn.length === 0 ? (
           <BaseEmpty text="No Connections" />
         ) : isTableLayout ? (

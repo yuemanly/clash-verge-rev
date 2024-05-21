@@ -21,6 +21,7 @@ const PLATFORM_MAP = {
   "i686-unknown-linux-gnu": "linux",
   "aarch64-unknown-linux-gnu": "linux",
   "armv7-unknown-linux-gnueabihf": "linux",
+  "riscv64gc-unknown-linux-gnu": "linux",
   "loongarch64-unknown-linux-gnu": "linux",
 };
 const ARCH_MAP = {
@@ -33,6 +34,7 @@ const ARCH_MAP = {
   "i686-unknown-linux-gnu": "ia32",
   "aarch64-unknown-linux-gnu": "arm64",
   "armv7-unknown-linux-gnueabihf": "arm",
+  "riscv64gc-unknown-linux-gnu": "riscv64",
   "loongarch64-unknown-linux-gnu": "loong64",
 };
 
@@ -59,12 +61,13 @@ const META_ALPHA_MAP = {
   "win32-x64": "mihomo-windows-amd64-compatible",
   "win32-ia32": "mihomo-windows-386",
   "win32-arm64": "mihomo-windows-arm64",
-  "darwin-x64": "mihomo-darwin-amd64",
+  "darwin-x64": "mihomo-darwin-amd64-compatible",
   "darwin-arm64": "mihomo-darwin-arm64",
   "linux-x64": "mihomo-linux-amd64-compatible",
   "linux-ia32": "mihomo-linux-386",
   "linux-arm64": "mihomo-linux-arm64",
   "linux-arm": "mihomo-linux-armv7",
+  "linux-riscv64": "mihomo-linux-riscv64",
   "linux-loong64": "mihomo-linux-loong64",
 };
 
@@ -105,12 +108,13 @@ const META_MAP = {
   "win32-x64": "mihomo-windows-amd64-compatible",
   "win32-ia32": "mihomo-windows-386",
   "win32-arm64": "mihomo-windows-arm64",
-  "darwin-x64": "mihomo-darwin-amd64",
+  "darwin-x64": "mihomo-darwin-amd64-compatible",
   "darwin-arm64": "mihomo-darwin-arm64",
   "linux-x64": "mihomo-linux-amd64-compatible",
   "linux-ia32": "mihomo-linux-386",
   "linux-arm64": "mihomo-linux-arm64",
   "linux-arm": "mihomo-linux-armv7",
+  "linux-riscv64": "mihomo-linux-riscv64",
   "linux-loong64": "mihomo-linux-loong64",
 };
 
@@ -317,26 +321,94 @@ async function downloadFile(url, path) {
   console.log(`[INFO]: download finished "${url}"`);
 }
 
+// SimpleSC.dll
+const resolvePlugin = async () => {
+  const url =
+    "https://nsis.sourceforge.io/mediawiki/images/e/ef/NSIS_Simple_Service_Plugin_Unicode_1.30.zip";
+
+  const tempDir = path.join(TEMP_DIR, "SimpleSC");
+  const tempZip = path.join(
+    tempDir,
+    "NSIS_Simple_Service_Plugin_Unicode_1.30.zip"
+  );
+  const tempDll = path.join(tempDir, "SimpleSC.dll");
+  const pluginDir = path.join(process.env.APPDATA, "Local/NSIS");
+  const pluginPath = path.join(pluginDir, "SimpleSC.dll");
+  await fs.mkdirp(pluginDir);
+  await fs.mkdirp(tempDir);
+  if (!FORCE && (await fs.pathExists(pluginPath))) return;
+  try {
+    if (!(await fs.pathExists(tempZip))) {
+      await downloadFile(url, tempZip);
+    }
+    const zip = new AdmZip(tempZip);
+    zip.getEntries().forEach((entry) => {
+      console.log(`[DEBUG]: "SimpleSC" entry name`, entry.entryName);
+    });
+    zip.extractAllTo(tempDir, true);
+    await fs.copyFile(tempDll, pluginPath);
+    console.log(`[INFO]: "SimpleSC" unzip finished`);
+  } finally {
+    await fs.remove(tempDir);
+  }
+};
+
+// service chmod
+const resolveServicePermission = async () => {
+  const serviceExecutables = [
+    "clash-verge-service",
+    "install-service",
+    "uninstall-service",
+  ];
+  const resDir = path.join(cwd, "src-tauri/resources");
+  for (let f of serviceExecutables) {
+    const targetPath = path.join(resDir, f);
+    if (await fs.pathExists(targetPath)) {
+      execSync(`chmod 755 ${targetPath}`);
+      console.log(`[INFO]: "${targetPath}" chmod finished`);
+    }
+  }
+};
+
 /**
  * main
  */
 
 const SERVICE_URL = `https://github.com/clash-verge-rev/clash-verge-service/releases/download/${SIDECAR_HOST}`;
 
-const resolveService = () =>
+const resolveService = () => {
+  let ext = platform === "win32" ? ".exe" : "";
   resolveResource({
-    file: "clash-verge-service.exe",
-    downloadURL: `${SERVICE_URL}/clash-verge-service.exe`,
+    file: "clash-verge-service" + ext,
+    downloadURL: `${SERVICE_URL}/clash-verge-service${ext}`,
   });
-const resolveInstall = () =>
+};
+
+const resolveInstall = () => {
+  let ext = platform === "win32" ? ".exe" : "";
   resolveResource({
-    file: "install-service.exe",
-    downloadURL: `${SERVICE_URL}/install-service.exe`,
+    file: "install-service" + ext,
+    downloadURL: `${SERVICE_URL}/install-service${ext}`,
   });
-const resolveUninstall = () =>
+};
+
+const resolveUninstall = () => {
+  let ext = platform === "win32" ? ".exe" : "";
   resolveResource({
-    file: "uninstall-service.exe",
-    downloadURL: `${SERVICE_URL}/uninstall-service.exe`,
+    file: "uninstall-service" + ext,
+    downloadURL: `${SERVICE_URL}/uninstall-service${ext}`,
+  });
+};
+
+const resolveSetDnsScript = () =>
+  resolveResource({
+    file: "set_dns.sh",
+    downloadURL: `https://github.com/clash-verge-rev/set-dns-script/releases/download/script/set_dns.sh`,
+  });
+const resolveUnSetDnsScript = () =>
+  resolveResource({
+    file: "unset_dns.sh",
+    downloadURL: `https://github.com/clash-verge-rev/set-dns-script/releases/download/script/unset_dns.sh`,
   });
 const resolveMmdb = () =>
   resolveResource({
@@ -373,9 +445,12 @@ const tasks = [
       getLatestReleaseVersion().then(() => resolveSidecar(clashMeta())),
     retry: 5,
   },
-  { name: "service", func: resolveService, retry: 5, winOnly: true },
-  { name: "install", func: resolveInstall, retry: 5, winOnly: true },
-  { name: "uninstall", func: resolveUninstall, retry: 5, winOnly: true },
+  { name: "plugin", func: resolvePlugin, retry: 5, winOnly: true },
+  { name: "service", func: resolveService, retry: 5 },
+  { name: "install", func: resolveInstall, retry: 5 },
+  { name: "uninstall", func: resolveUninstall, retry: 5 },
+  { name: "set_dns_script", func: resolveSetDnsScript, retry: 5 },
+  { name: "unset_dns_script", func: resolveUnSetDnsScript, retry: 5 },
   { name: "mmdb", func: resolveMmdb, retry: 5 },
   { name: "geosite", func: resolveGeosite, retry: 5 },
   { name: "geoip", func: resolveGeoIP, retry: 5 },
@@ -385,12 +460,20 @@ const tasks = [
     retry: 5,
     winOnly: true,
   },
+  {
+    name: "service_chmod",
+    func: resolveServicePermission,
+    retry: 1,
+    unixOnly: true,
+  },
 ];
 
 async function runTask() {
   const task = tasks.shift();
   if (!task) return;
-  if (task.winOnly && process.platform !== "win32") return runTask();
+  if (task.winOnly && platform !== "win32") return runTask();
+  if (task.linuxOnly && platform !== "linux") return runTask();
+  if (task.unixOnly && platform === "win32") return runTask();
 
   for (let i = 0; i < task.retry; i++) {
     try {

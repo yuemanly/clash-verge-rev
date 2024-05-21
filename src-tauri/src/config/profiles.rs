@@ -14,9 +14,6 @@ pub struct IProfiles {
     /// same as PrfConfig.chain
     pub chain: Option<Vec<String>>,
 
-    /// record valid fields for clash
-    pub valid: Option<Vec<String>>,
-
     /// profile list
     pub items: Option<Vec<PrfItem>>,
 }
@@ -55,12 +52,6 @@ impl IProfiles {
 
     pub fn template() -> Self {
         Self {
-            valid: Some(vec![
-                "dns".into(),
-                "sub-rules".into(),
-                "unified-delay".into(),
-                "tcp-concurrent".into(),
-            ]),
             items: Some(vec![]),
             ..Self::default()
         }
@@ -91,10 +82,6 @@ impl IProfiles {
 
         if let Some(chain) = patch.chain {
             self.chain = Some(chain);
-        }
-
-        if let Some(valid) = patch.valid {
-            self.valid = Some(valid);
         }
 
         Ok(())
@@ -224,7 +211,7 @@ impl IProfiles {
                 if each.uid == some_uid {
                     each.extra = item.extra;
                     each.updated = item.updated;
-
+                    each.home = item.home;
                     // save the file data
                     // move the field value after save
                     if let Some(file_data) = item.file_data.take() {

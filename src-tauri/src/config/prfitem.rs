@@ -46,6 +46,10 @@ pub struct PrfItem {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub option: Option<PrfOption>,
 
+    /// profile web page url
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub home: Option<String>,
+
     /// the file data
     #[serde(skip)]
     pub file_data: Option<String>,
@@ -59,10 +63,10 @@ pub struct PrfSelected {
 
 #[derive(Default, Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct PrfExtra {
-    pub upload: usize,
-    pub download: usize,
-    pub total: usize,
-    pub expire: usize,
+    pub upload: u64,
+    pub download: u64,
+    pub total: u64,
+    pub expire: u64,
 }
 
 #[derive(Default, Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -84,6 +88,12 @@ pub struct PrfOption {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub update_interval: Option<u64>,
+
+    /// for `remote` profile
+    /// disable certificate validation
+    /// default is `false`
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub danger_accept_invalid_certs: Option<bool>,
 }
 
 impl PrfOption {
@@ -93,6 +103,7 @@ impl PrfOption {
                 a.user_agent = b.user_agent.or(a.user_agent);
                 a.with_proxy = b.with_proxy.or(a.with_proxy);
                 a.self_proxy = b.self_proxy.or(a.self_proxy);
+                a.danger_accept_invalid_certs = b.danger_accept_invalid_certs.or(a.danger_accept_invalid_certs);
                 a.update_interval = b.update_interval.or(a.update_interval);
                 Some(a)
             }
@@ -154,6 +165,7 @@ impl PrfItem {
             selected: None,
             extra: None,
             option: None,
+            home: None,
             updated: Some(chrono::Local::now().timestamp() as usize),
             file_data: Some(file_data.unwrap_or(tmpl::ITEM_LOCAL.into())),
         })
@@ -170,6 +182,7 @@ impl PrfItem {
         let opt_ref = option.as_ref();
         let with_proxy = opt_ref.map_or(false, |o| o.with_proxy.unwrap_or(false));
         let self_proxy = opt_ref.map_or(false, |o| o.self_proxy.unwrap_or(false));
+        let accept_invalid_certs = opt_ref.map_or(false, |o| o.danger_accept_invalid_certs.unwrap_or(false));
         let user_agent = opt_ref.and_then(|o| o.user_agent.clone());
         let update_interval = opt_ref.and_then(|o| o.update_interval);
 
@@ -216,6 +229,7 @@ impl PrfItem {
             None => "clash-verge/unknown".to_string(),
         };
 
+        builder = builder.danger_accept_invalid_certs(accept_invalid_certs);
         builder = builder.user_agent(user_agent.unwrap_or(version));
 
         let resp = builder.build()?.get(url).send().await?;
@@ -282,6 +296,14 @@ impl PrfItem {
             },
         };
 
+        let home = match header.get("profile-web-page-url") {
+            Some(value) => {
+                let str_value = value.to_str().unwrap_or("");
+                Some(str_value.to_string())
+            },
+            None => None,
+        };
+
         let uid = help::get_uid("r");
         let file = format!("{uid}.yaml");
         let name = name.unwrap_or(filename.unwrap_or("Remote File".into()));
@@ -308,6 +330,7 @@ impl PrfItem {
             selected: None,
             extra,
             option,
+            home,
             updated: Some(chrono::Local::now().timestamp() as usize),
             file_data: Some(data.into()),
         })
@@ -329,6 +352,7 @@ impl PrfItem {
             selected: None,
             extra: None,
             option: None,
+            home: None,
             updated: Some(chrono::Local::now().timestamp() as usize),
             file_data: Some(tmpl::ITEM_MERGE.into()),
         })
@@ -347,6 +371,7 @@ impl PrfItem {
             desc: Some(desc),
             file: Some(file),
             url: None,
+            home: None,
             selected: None,
             extra: None,
             option: None,

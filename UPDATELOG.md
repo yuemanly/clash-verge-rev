@@ -1,3 +1,256 @@
+## v1.6.2
+
+### Features
+
+- 支持本地文件拖拽导入
+- 重新支持 32 位 CPU
+- 新增内置 Webview2 版本
+- 优化 Merge 逻辑，支持深度合并
+- 删除 Merge 配置中的 append/prepend-provider 字段
+- 支持更新稳定版内核
+
+### Bugs Fixes
+
+- MacOS DNS 还原失败
+- CMD 环境变量格式错误
+- Linux 下与 N 卡的兼容性问题
+- 修改 Tun 设置不立即生效
+
+## v1.6.1
+
+### Features
+
+- 鼠标悬浮显示当前订阅的名称 [#938](https://github.com/clash-verge-rev/clash-verge-rev/pull/938)
+- 日志过滤支持正则表达式 [#959](https://github.com/clash-verge-rev/clash-verge-rev/pull/959)
+- 更新 Clash 内核到 1.18.4
+
+### Bugs Fixes
+
+- 修复 Linux KDE 环境下系统代理无法开启的问题
+- 窗口最大化图标调整 [#924](https://github.com/clash-verge-rev/clash-verge-rev/pull/924)
+- 修改 MacOS 托盘点击行为(左键菜单，右键点击事件)
+- 修复 MacOS 服务模式安装失败的问题
+
+---
+
+## v1.6.0
+
+### Features
+
+- Meta(mihomo)内核回退 1.18.1（当前新版内核 hy2 协议有 bug，等修复后更新）
+- 多处界面细节调整 [#724](https://github.com/clash-verge-rev/clash-verge-rev/pull/724) [#799](https://github.com/clash-verge-rev/clash-verge-rev/pull/799) [#900](https://github.com/clash-verge-rev/clash-verge-rev/pull/900) [#901](https://github.com/clash-verge-rev/clash-verge-rev/pull/901)
+- Linux 下新增服务模式
+- 新增订阅卡片右键可以打开机场首页
+- url-test 支持手动选择、节点组 fixed 节点使用角标展示 [#840](https://github.com/clash-verge-rev/clash-verge-rev/pull/840)
+- Clash 配置、Merge 配置提供 JSON Schema 语法支持、连接界面调整 [#887](https://github.com/clash-verge-rev/clash-verge-rev/pull/887)
+- 修改 Merge 配置文件默认内容 [#889](https://github.com/clash-verge-rev/clash-verge-rev/pull/889)
+- 修改 tun 模式默认 mtu 为 1500，老版本升级，需在 tun 模式设置下“重置为默认值”。
+- 使用 npm 安装 meta-json-schema [#895](https://github.com/clash-verge-rev/clash-verge-rev/pull/895)
+- 更新部分翻译 [#904](https://github.com/clash-verge-rev/clash-verge-rev/pull/904)
+- 支持 ico 格式的任务栏图标
+
+### Bugs Fixes
+
+- 修复 Linux KDE 环境下系统代理无法开启的问题
+- 修复延迟检测动画问题
+- 窗口最大化图标调整 [#816](https://github.com/clash-verge-rev/clash-verge-rev/pull/816)
+- 修复 Windows 某些情况下无法安装服务模式 [#822](https://github.com/clash-verge-rev/clash-verge-rev/pull/822)
+- UI 细节修复 [#821](https://github.com/clash-verge-rev/clash-verge-rev/pull/821)
+- 修复使用默认编辑器打开配置文件
+- 修复内核文件在特定目录也可以更新的问题 [#857](https://github.com/clash-verge-rev/clash-verge-rev/pull/857)
+- 修复服务模式的安装目录问题
+- 修复删除配置文件的“更新间隔”出现的问题 [#907](https://github.com/clash-verge-rev/clash-verge-rev/issues/907)
+
+### 已知问题（历史遗留问题，暂未找到有效解决方案）
+
+- MacOS M 芯片下服务模式无法安装；临时解决方案：在内核 ⚙️ 下，手动授权，再打开 tun 模式。
+- MacOS 下如果删除过网络配置，会导致无法正常打开系统代理；临时解决方案：使用浏览器代理插件或手动配置系统代理。
+- Window 拨号连接下无法正确识别并打开系统代理；临时解决方案：使用浏览器代理插件或使用 tun 模式。
+
+---
+
+## v1.5.11
+
+### Features
+
+- Meta(mihomo)内核更新 1.18.2
+
+### Bugs Fixes
+
+- 升级图标无法点击的问题
+- 卸载时检查安装目录是否为空
+- 代理界面图标重合的问题
+
+---
+
+## v1.5.10
+
+### Features
+
+- 优化 Linux 托盘菜单显示
+- 添加透明代理端口设置
+- 删除订阅前确认
+
+### Bugs Fixes
+
+- 删除 MacOS 程序坞图标
+- Windows 下 service 日志没有清理
+- MacOS 无法开启系统代理
+
+---
+
+## v1.5.9
+
+### Features
+
+- 缓存代理组图标
+- 使用`boa_engine` 代替 `rquickjs`
+- 支持 Linux armv7
+
+### Bugs Fixes
+
+- Windows 首次安装无法点击
+- Windows 触摸屏无法拖动
+- 规则列表 `REJECT-DROP` 颜色
+- MacOS Dock 栏不显示图标
+- MacOS 自定义字体无效
+- 避免使用空 UA 拉取订阅
+
+---
+
+## v1.5.8
+
+### Features
+
+- 优化 UI 细节
+- Linux 绘制窗口圆角
+- 开放 DevTools
+
+### Bugs Fixes
+
+- 修复 MacOS 下开启 Tun 内核崩溃的问题
+
+---
+
+## v1.5.7
+
+### Features
+
+- 优化 UI 各种细节
+- 提供菜单栏图标样式切换选项(单色/彩色/禁用)
+- 添加自动检查更新开关
+- MacOS 开启 Tun 模式自动修改 DNS
+- 调整可拖动区域(尝试修复触摸屏无法拖动的问题)
+
+---
+
+## v1.5.6
+
+### Features
+
+- 全新专属 Verge rev UI 界面 (by @Amnesiash) 及细节调整
+- 提供允许无效证书的开关
+- 删除不必要的快捷键
+- Provider 更新添加动画
+- Merge 支持 Provider
+- 更换订阅框的粘贴按钮，删除默认的"Remote File" Profile 名称
+- 链接菜单添加节点显示
+
+### Bugs Fixes
+
+- Linux 下图片显示错误
+
+---
+
+## v1.5.4
+
+### Features
+
+- 支持自定义托盘图标
+- 支持禁用代理组图标
+- 代理组显示当前代理
+- 修改 `打开面板` 快捷键为`打开/关闭面板`
+
+---
+
+## v1.5.3
+
+### Features
+
+- Tun 设置添加重置按钮
+
+### Bugs Fixes
+
+- Tun 设置项显示错误的问题
+- 修改一些默认值
+- 启动时不更改启动项设置
+
+---
+
+## v1.5.2
+
+### Features
+
+- 支持自定义延迟测试超时时间
+- 优化 Tun 相关设置
+
+### Bugs Fixes
+
+- Merge 操作出错
+- 安装后重启服务
+- 修复管理员权限启动时开机启动失效的问题
+
+---
+
+## v1.5.1
+
+### Features
+
+- 保存窗口最大化状态
+- Proxy Provider 显示数量
+- 不再提供 32 位安装包（因为 32 位经常出现各种奇怪问题，比如 tun 模式无法开启；现在系统也几乎没有 32 位了）
+
+### Bugs Fixes
+
+- 优化设置项名称
+- 自定义 GLOBAL 代理组时代理组显示错误的问题
+
+---
+
+## v1.5.0
+
+### Features
+
+- 删除 Clash 字段过滤功能
+- 添加 socks 端口和 http 端口设置
+- 升级内核到 1.18.1
+
+### Bugs Fixes
+
+- 修复 32 位版本无法显示流量信息的问题
+
+---
+
+## v1.4.11
+
+### Break Changes
+
+- 此版本更改了 Windows 安装包安装模式，需要卸载后手动安装，否则无法安装到正确位置
+
+### Features
+
+- 优化了系统代理开启的代码，解决了稀有场景下代理开启卡顿的问题
+- 添加 MacOS 下的 debug 日志，以便日后调试稀有场景下 MacOS 下无法开启系统代理的问题
+- MacOS 关闭 GUI 时同步杀除后台 GUI [#306](https://github.com/clash-verge-rev/clash-verge-rev/issues/306)
+
+### Bugs Fixes
+
+- 解决自动更新时文件占用问题
+- 解决稀有场景下系统代理开启失败的问题
+- 删除冗余内核代码
+
+---
+
 ## v1.4.10
 
 ### Features
@@ -7,7 +260,7 @@
 - 在 Proxy Provider 页面展示订阅信息
 - 优化 Provider 支持
 
-### Bugs fixed:
+### Bugs Fixes
 
 - 更改端口时立即重设系统代理
 - 网站测试超时错误

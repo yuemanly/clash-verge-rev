@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { useLockFn } from "ahooks";
 import {
   TextField,
-  Switch,
   Select,
   MenuItem,
   Typography,
@@ -11,11 +10,10 @@ import {
   Tooltip,
 } from "@mui/material";
 import { ArrowForward, Settings, Shuffle } from "@mui/icons-material";
-import { DialogRef, Notice } from "@/components/base";
+import { DialogRef, Notice, Switch } from "@/components/base";
 import { useClash } from "@/hooks/use-clash";
 import { GuardState } from "./mods/guard-state";
 import { WebUIViewer } from "./mods/web-ui-viewer";
-import { ClashFieldViewer } from "./mods/clash-field-viewer";
 import { ClashPortViewer } from "./mods/clash-port-viewer";
 import { ControllerViewer } from "./mods/controller-viewer";
 import { SettingList, SettingItem } from "./mods/setting-comp";
@@ -39,14 +37,9 @@ const SettingClash = ({ onError }: Props) => {
 
   const { ipv6, "allow-lan": allowLan, "log-level": logLevel } = clash ?? {};
 
-  const {
-    enable_random_port = false,
-    verge_mixed_port,
-    enable_clash_fields = true,
-  } = verge ?? {};
+  const { enable_random_port = false, verge_mixed_port } = verge ?? {};
 
   const webRef = useRef<DialogRef>(null);
-  const fieldRef = useRef<DialogRef>(null);
   const portRef = useRef<DialogRef>(null);
   const ctrlRef = useRef<DialogRef>(null);
   const coreRef = useRef<DialogRef>(null);
@@ -61,7 +54,7 @@ const SettingClash = ({ onError }: Props) => {
   const onUpdateGeo = useLockFn(async () => {
     try {
       await updateGeoData();
-      Notice.success("Start update geodata");
+      Notice.success(t("GeoData Updated"));
     } catch (err: any) {
       Notice.error(err?.response.data.message || err.toString());
     }
@@ -70,7 +63,6 @@ const SettingClash = ({ onError }: Props) => {
   return (
     <SettingList title={t("Clash Setting")}>
       <WebUIViewer ref={webRef} />
-      <ClashFieldViewer ref={fieldRef} />
       <ClashPortViewer ref={portRef} />
       <ControllerViewer ref={ctrlRef} />
       <ClashCoreViewer ref={coreRef} />
@@ -121,14 +113,14 @@ const SettingClash = ({ onError }: Props) => {
       </SettingItem>
 
       <SettingItem
-        label={t("Mixed Port")}
+        label={t("Port Config")}
         extra={
           <Tooltip title={t("Random Port")}>
             <IconButton
-              color={enable_random_port ? "success" : "inherit"}
+              color={enable_random_port ? "primary" : "inherit"}
               size="small"
               onClick={() => {
-                Notice.success(t("After restart to take effect"), 1000);
+                Notice.success(t("Restart Application to Apply Modifications"), 1000);
                 onChangeVerge({ enable_random_port: !enable_random_port });
                 patchVerge({ enable_random_port: !enable_random_port });
               }}
@@ -175,19 +167,6 @@ const SettingClash = ({ onError }: Props) => {
           <ArrowForward />
         </IconButton>
       </SettingItem>
-
-      {enable_clash_fields && (
-        <SettingItem label={t("Clash Field")}>
-          <IconButton
-            color="inherit"
-            size="small"
-            sx={{ my: "2px" }}
-            onClick={() => fieldRef.current?.open()}
-          >
-            <ArrowForward />
-          </IconButton>
-        </SettingItem>
-      )}
 
       <SettingItem
         label={t("Clash Core")}

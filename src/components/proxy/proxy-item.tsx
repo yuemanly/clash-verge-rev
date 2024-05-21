@@ -14,9 +14,10 @@ import {
 } from "@mui/material";
 import { BaseLoading } from "@/components/base";
 import delayManager from "@/services/delay";
+import { useVerge } from "@/hooks/use-verge";
 
 interface Props {
-  groupName: string;
+  group: IProxyGroupItem;
   proxy: IProxyItem;
   selected: boolean;
   showType?: boolean;
@@ -43,28 +44,29 @@ const TypeBox = styled(Box)(({ theme }) => ({
 }));
 
 export const ProxyItem = (props: Props) => {
-  const { groupName, proxy, selected, showType = true, sx, onClick } = props;
+  const { group, proxy, selected, showType = true, sx, onClick } = props;
 
   // -1/<=0 为 不显示
   // -2 为 loading
   const [delay, setDelay] = useState(-1);
-
+  const { verge } = useVerge();
+  const timeout = verge?.default_latency_timeout || 10000;
   useEffect(() => {
-    delayManager.setListener(proxy.name, groupName, setDelay);
+    delayManager.setListener(proxy.name, group.name, setDelay);
 
     return () => {
-      delayManager.removeListener(proxy.name, groupName);
+      delayManager.removeListener(proxy.name, group.name);
     };
-  }, [proxy.name, groupName]);
+  }, [proxy.name, group.name]);
 
   useEffect(() => {
     if (!proxy) return;
-    setDelay(delayManager.getDelayFix(proxy, groupName));
+    setDelay(delayManager.getDelayFix(proxy, group.name));
   }, [proxy]);
 
   const onDelay = useLockFn(async () => {
     setDelay(-2);
-    setDelay(await delayManager.checkDelay(proxy.name, groupName));
+    setDelay(await delayManager.checkDelay(proxy.name, group.name, timeout));
   });
 
   return (
@@ -76,19 +78,26 @@ export const ProxyItem = (props: Props) => {
         sx={[
           { borderRadius: 1 },
           ({ palette: { mode, primary } }) => {
-            const bgcolor =
-              mode === "light"
-                ? alpha(primary.main, 0.15)
-                : alpha(primary.main, 0.35);
-            const color = mode === "light" ? primary.main : primary.light;
+            const bgcolor = mode === "light" ? "#ffffff" : "#24252f";
+            const selectColor = mode === "light" ? primary.main : primary.light;
             const showDelay = delay > 0;
 
             return {
               "&:hover .the-check": { display: !showDelay ? "block" : "none" },
               "&:hover .the-delay": { display: showDelay ? "block" : "none" },
               "&:hover .the-icon": { display: "none" },
-              "&.Mui-selected": { bgcolor },
-              "&.Mui-selected .MuiListItemText-secondary": { color },
+              "&.Mui-selected": {
+                width: `calc(100% + 3px)`,
+                marginLeft: `-3px`,
+                borderLeft: `3px solid ${selectColor}`,
+                bgcolor:
+                  mode === "light"
+                    ? alpha(primary.main, 0.15)
+                    : alpha(primary.main, 0.35),
+              },
+              backgroundColor: bgcolor,
+              marginBottom: "8px",
+              height: "40px",
             };
           },
         ]}
@@ -97,8 +106,17 @@ export const ProxyItem = (props: Props) => {
           title={proxy.name}
           secondary={
             <>
-              <span style={{ marginRight: 4 }}>{proxy.name}</span>
-
+              <Box
+                sx={{
+                  display: "inline-block",
+                  marginRight: "8px",
+                  fontSize: "14px",
+                  color: "text.primary",
+                }}
+              >
+                {proxy.name}
+                {showType && proxy.now && ` - ${proxy.now}`}
+              </Box>
               {showType && !!proxy.provider && (
                 <TypeBox component="span">{proxy.provider}</TypeBox>
               )}
@@ -149,14 +167,14 @@ export const ProxyItem = (props: Props) => {
                 e.stopPropagation();
                 onDelay();
               }}
-              color={delayManager.formatDelayColor(delay)}
+              color={delayManager.formatDelayColor(delay, timeout)}
               sx={({ palette }) =>
                 !proxy.provider
                   ? { ":hover": { bgcolor: alpha(palette.primary.main, 0.15) } }
                   : {}
               }
             >
-              {delayManager.formatDelay(delay)}
+              {delayManager.formatDelay(delay, timeout)}
             </Widget>
           )}
 

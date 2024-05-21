@@ -26,7 +26,7 @@ export const ControllerViewer = forwardRef<DialogRef>((props, ref) => {
   const onSave = useLockFn(async () => {
     try {
       await patchInfo({ "external-controller": controller, secret });
-      Notice.success("Change Clash Config successfully!", 1000);
+      Notice.success(t("External Controller Address Modified"), 1000);
       setOpen(false);
     } catch (err: any) {
       Notice.error(err.message || err.toString(), 4000);
@@ -36,7 +36,7 @@ export const ControllerViewer = forwardRef<DialogRef>((props, ref) => {
   return (
     <BaseDialog
       open={open}
-      title={t("Clash Port")}
+      title={t("External Controller")}
       contentSx={{ width: 400 }}
       okBtn={t("Save")}
       cancelBtn={t("Cancel")}
@@ -46,7 +46,7 @@ export const ControllerViewer = forwardRef<DialogRef>((props, ref) => {
     >
       <List>
         <ListItem sx={{ padding: "5px 2px" }}>
-          <ListItemText primary="External Controller" />
+          <ListItemText primary={t("External Controller")} />
           <TextField
             size="small"
             autoComplete="off"
@@ -58,14 +58,16 @@ export const ControllerViewer = forwardRef<DialogRef>((props, ref) => {
         </ListItem>
 
         <ListItem sx={{ padding: "5px 2px" }}>
-          <ListItemText primary="Core Secret" />
+          <ListItemText primary={t("Core Secret")} />
           <TextField
             size="small"
             autoComplete="off"
             sx={{ width: 175 }}
             value={secret}
-            placeholder="Recommended"
-            onChange={(e) => setSecret(e.target.value)}
+            placeholder={t("Recommended")}
+            onChange={(e) =>
+              setSecret(e.target.value?.replace(/[^\x00-\x7F]/g, ""))
+            }
           />
         </ListItem>
       </List>

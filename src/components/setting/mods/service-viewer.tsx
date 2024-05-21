@@ -43,7 +43,7 @@ export const ServiceViewer = forwardRef<DialogRef, Props>((props, ref) => {
       await installService();
       mutateCheck();
       setOpen(false);
-      Notice.success("Service installed successfully");
+      Notice.success(t("Service Installed Successfully"));
     } catch (err: any) {
       mutateCheck();
       Notice.error(err.message || err.toString());
@@ -59,7 +59,7 @@ export const ServiceViewer = forwardRef<DialogRef, Props>((props, ref) => {
       await uninstallService();
       mutateCheck();
       setOpen(false);
-      Notice.success("Service uninstalled successfully");
+      Notice.success(t("Service Uninstalled Successfully"));
     } catch (err: any) {
       mutateCheck();
       Notice.error(err.message || err.toString());
@@ -86,12 +86,15 @@ export const ServiceViewer = forwardRef<DialogRef, Props>((props, ref) => {
       disableFooter
       onClose={() => setOpen(false)}
     >
-      <Typography>Current State: {state}</Typography>
+      <Typography>
+        {t("Current State")}: {t(state)}
+      </Typography>
 
       {(state === "unknown" || state === "uninstall") && (
         <Typography>
-          Information: Please make sure that the Clash Verge Service is
-          installed and enabled
+          {t(
+            "Information: Please make sure that the Clash Verge Service is installed and enabled"
+          )}
         </Typography>
       )}
 
@@ -102,19 +105,19 @@ export const ServiceViewer = forwardRef<DialogRef, Props>((props, ref) => {
       >
         {state === "uninstall" && enable && (
           <Button variant="contained" onClick={onDisable}>
-            Disable Service Mode
+            {t("Disable Service Mode")}
           </Button>
         )}
 
         {state === "uninstall" && (
           <Button variant="contained" onClick={onInstall}>
-            Install
+            {t("Install")}
           </Button>
         )}
 
         {(state === "active" || state === "installed") && (
           <Button variant="outlined" onClick={onUninstall}>
-            Uninstall
+            {t("Uninstall")}
           </Button>
         )}
       </Stack>

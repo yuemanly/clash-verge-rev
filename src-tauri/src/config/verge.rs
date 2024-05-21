@@ -36,6 +36,25 @@ pub struct IVerge {
     /// show memory info (only for Clash Meta)
     pub enable_memory_usage: Option<bool>,
 
+    /// enable group icon
+    pub enable_group_icon: Option<bool>,
+
+    /// common tray icon
+    pub common_tray_icon: Option<bool>,
+
+    /// tray icon
+    #[cfg(target_os = "macos")]
+    pub tray_icon: Option<String>,
+
+    /// menu icon
+    pub menu_icon: Option<String>,
+
+    /// sysproxy tray icon
+    pub sysproxy_tray_icon: Option<bool>,
+
+    /// tun tray icon
+    pub tun_tray_icon: Option<bool>,
+
     /// clash tun mode
     pub enable_tun_mode: Option<bool>,
 
@@ -58,9 +77,6 @@ pub struct IVerge {
     /// set system proxy bypass
     pub system_proxy_bypass: Option<String>,
 
-    /// set system proxy method
-    pub system_proxy_registry_mode: Option<bool>,
-
     /// proxy guard duration
     pub proxy_guard_duration: Option<u64>,
 
@@ -81,11 +97,14 @@ pub struct IVerge {
     /// 切换代理时自动关闭连接
     pub auto_close_connection: Option<bool>,
 
+    /// 是否自动检查更新
+    pub auto_check_update: Option<bool>,
+
     /// 默认的延迟测试连接
     pub default_latency_test: Option<String>,
 
-    /// 支持关闭字段过滤，避免meta的新字段都被过滤掉，默认为关闭
-    pub enable_clash_fields: Option<bool>,
+    /// 默认的延迟测试超时时间
+    pub default_latency_timeout: Option<i32>,
 
     /// 是否使用内部的脚本支持，默认为真
     pub enable_builtin_enhanced: Option<bool>,
@@ -104,11 +123,35 @@ pub struct IVerge {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub window_size_position: Option<Vec<f64>>,
 
+    /// window size and position
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub window_is_maximized: Option<bool>,
+
     /// 是否启用随机端口
     pub enable_random_port: Option<bool>,
 
-    /// verge mixed port 用于覆盖 clash 的 mixed port
+    /// verge 的各种 port 用于覆盖 clash 的各种 port
+    #[cfg(not(target_os = "windows"))]
+    pub verge_redir_port: Option<u16>,
+
+    #[cfg(not(target_os = "windows"))]
+    pub verge_redir_enabled: Option<bool>,
+
+    #[cfg(target_os = "linux")]
+    pub verge_tproxy_port: Option<u16>,
+
+    #[cfg(target_os = "linux")]
+    pub verge_tproxy_enabled: Option<bool>,
+
     pub verge_mixed_port: Option<u16>,
+
+    pub verge_socks_port: Option<u16>,
+
+    pub verge_socks_enabled: Option<bool>,
+
+    pub verge_port: Option<u16>,
+
+    pub verge_http_enabled: Option<bool>,
 }
 
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
@@ -158,17 +201,35 @@ impl IVerge {
             start_page: Some("/".into()),
             traffic_graph: Some(true),
             enable_memory_usage: Some(true),
+            enable_group_icon: Some(true),
+            #[cfg(target_os = "macos")]
+            tray_icon: Some("monochrome".into()),
+            menu_icon: Some("monochrome".into()),
+            common_tray_icon: Some(false),
+            sysproxy_tray_icon: Some(false),
+            tun_tray_icon: Some(false),
             enable_auto_launch: Some(false),
             enable_silent_start: Some(false),
             enable_system_proxy: Some(false),
-            system_proxy_registry_mode: Some(false),
             enable_random_port: Some(false),
+            #[cfg(not(target_os = "windows"))]
+            verge_redir_port: Some(7895),
+            #[cfg(not(target_os = "windows"))]
+            verge_redir_enabled: Some(true),
+            #[cfg(target_os = "linux")]
+            verge_tproxy_port: Some(7896),
+            #[cfg(target_os = "linux")]
+            verge_tproxy_enabled: Some(true),
             verge_mixed_port: Some(7897),
+            verge_socks_port: Some(7898),
+            verge_socks_enabled: Some(true),
+            verge_port: Some(7899),
+            verge_http_enabled: Some(true),
             enable_proxy_guard: Some(false),
             proxy_guard_duration: Some(30),
             auto_close_connection: Some(true),
+            auto_check_update: Some(true),
             enable_builtin_enhanced: Some(true),
-            enable_clash_fields: Some(true),
             auto_log_clean: Some(3),
             ..Self::default()
         }
@@ -199,17 +260,35 @@ impl IVerge {
         patch!(startup_script);
         patch!(traffic_graph);
         patch!(enable_memory_usage);
+        patch!(enable_group_icon);
+        #[cfg(target_os = "macos")]
+        patch!(tray_icon);
+        patch!(menu_icon);
+        patch!(common_tray_icon);
+        patch!(sysproxy_tray_icon);
+        patch!(tun_tray_icon);
 
         patch!(enable_tun_mode);
         patch!(enable_service_mode);
         patch!(enable_auto_launch);
         patch!(enable_silent_start);
         patch!(enable_random_port);
+        #[cfg(not(target_os = "windows"))]
+        patch!(verge_redir_port);
+        #[cfg(not(target_os = "windows"))]
+        patch!(verge_redir_enabled);
+        #[cfg(target_os = "linux")]
+        patch!(verge_tproxy_port);
+        #[cfg(target_os = "linux")]
+        patch!(verge_tproxy_enabled);
         patch!(verge_mixed_port);
+        patch!(verge_socks_port);
+        patch!(verge_socks_enabled);
+        patch!(verge_port);
+        patch!(verge_http_enabled);
         patch!(enable_system_proxy);
         patch!(enable_proxy_guard);
         patch!(system_proxy_bypass);
-        patch!(system_proxy_registry_mode);
         patch!(proxy_guard_duration);
 
         patch!(theme_setting);
@@ -218,13 +297,15 @@ impl IVerge {
         patch!(hotkeys);
 
         patch!(auto_close_connection);
+        patch!(auto_check_update);
         patch!(default_latency_test);
+        patch!(default_latency_timeout);
         patch!(enable_builtin_enhanced);
         patch!(proxy_layout_column);
         patch!(test_list);
-        patch!(enable_clash_fields);
         patch!(auto_log_clean);
         patch!(window_size_position);
+        patch!(window_is_maximized);
     }
 
     /// 在初始化前尝试拿到单例端口的值

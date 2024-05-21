@@ -29,21 +29,23 @@ export const LayoutTraffic = () => {
   // setup log ws during layout
   useLogSetup();
 
-  const { connect, disconnect } = useWebsocket((event) => {
-    const data = JSON.parse(event.data) as ITrafficItem;
-    trafficRef.current?.appendData(data);
-    setTraffic(data);
-  });
+  const trafficWs = useWebsocket(
+    (event) => {
+      const data = JSON.parse(event.data) as ITrafficItem;
+      trafficRef.current?.appendData(data);
+      setTraffic(data);
+    },
+    { onError: () => setTraffic({ up: 0, down: 0 }), errorCount: 10 }
+  );
 
   useEffect(() => {
     if (!clashInfo || !pageVisible) return;
 
     const { server = "", secret = "" } = clashInfo;
-    connect(`ws://${server}/traffic?token=${encodeURIComponent(secret)}`);
-
-    return () => {
-      disconnect();
-    };
+    trafficWs.connect(
+      `ws://${server}/traffic?token=${encodeURIComponent(secret)}`
+    );
+    return () => trafficWs.disconnect();
   }, [clashInfo, pageVisible]);
 
   /* --------- meta memory information --------- */
@@ -54,7 +56,7 @@ export const LayoutTraffic = () => {
     (event) => {
       setMemory(JSON.parse(event.data));
     },
-    { onError: () => setMemory({ inuse: 0 }) }
+    { onError: () => setMemory({ inuse: 0 }), errorCount: 10 }
   );
 
   useEffect(() => {
@@ -75,7 +77,7 @@ export const LayoutTraffic = () => {
   };
   const valStyle: any = {
     component: "span",
-    color: "primary",
+    // color: "primary",
     textAlign: "center",
     sx: { flex: "1 1 56px", userSelect: "none" },
   };
@@ -88,11 +90,7 @@ export const LayoutTraffic = () => {
   };
 
   return (
-    <Box
-      width="110px"
-      position="relative"
-      onClick={trafficRef.current?.toggleStyle}
-    >
+    <Box position="relative" onClick={trafficRef.current?.toggleStyle}>
       {trafficGraph && pageVisible && (
         <div style={{ width: "100%", height: 60, marginBottom: 6 }}>
           <TrafficGraph ref={trafficRef} />
@@ -103,9 +101,11 @@ export const LayoutTraffic = () => {
         <Box display="flex" alignItems="center" whiteSpace="nowrap">
           <ArrowUpward
             {...iconStyle}
-            color={+up > 0 ? "primary" : "disabled"}
+            color={+up > 0 ? "secondary" : "disabled"}
           />
-          <Typography {...valStyle}>{up}</Typography>
+          <Typography {...valStyle} color="secondary">
+            {up}
+          </Typography>
           <Typography {...unitStyle}>{upUnit}/s</Typography>
         </Box>
 
@@ -114,7 +114,9 @@ export const LayoutTraffic = () => {
             {...iconStyle}
             color={+down > 0 ? "primary" : "disabled"}
           />
-          <Typography {...valStyle}>{down}</Typography>
+          <Typography {...valStyle} color="primary">
+            {down}
+          </Typography>
           <Typography {...unitStyle}>{downUnit}/s</Typography>
         </Box>
 

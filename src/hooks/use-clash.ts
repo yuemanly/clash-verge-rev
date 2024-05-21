@@ -1,17 +1,16 @@
 import useSWR, { mutate } from "swr";
 import { useLockFn } from "ahooks";
+import { getAxios, getVersion, updateConfigs } from "@/services/api";
 import {
-  getAxios,
-  getClashConfig,
-  getVersion,
-  updateConfigs,
-} from "@/services/api";
-import { getClashInfo, patchClashConfig } from "@/services/cmds";
+  getClashInfo,
+  patchClashConfig,
+  getRuntimeConfig,
+} from "@/services/cmds";
 
 export const useClash = () => {
   const { data: clash, mutate: mutateClash } = useSWR(
-    "getClashConfig",
-    getClashConfig
+    "getRuntimeConfig",
+    getRuntimeConfig
   );
 
   const { data: versionData, mutate: mutateVersion } = useSWR(
@@ -48,18 +47,71 @@ export const useClashInfo = () => {
 
   const patchInfo = async (
     patch: Partial<
-      Pick<IConfigData, "mixed-port" | "external-controller" | "secret">
+      Pick<
+        IConfigData,
+        | "port"
+        | "socks-port"
+        | "mixed-port"
+        | "redir-port"
+        | "tproxy-port"
+        | "external-controller"
+        | "secret"
+      >
     >
   ) => {
     const hasInfo =
+      patch["redir-port"] != null ||
+      patch["tproxy-port"] != null ||
       patch["mixed-port"] != null ||
+      patch["socks-port"] != null ||
+      patch["port"] != null ||
       patch["external-controller"] != null ||
       patch.secret != null;
 
     if (!hasInfo) return;
 
+    if (patch["redir-port"]) {
+      const port = patch["redir-port"];
+      if (port < 1000) {
+        throw new Error("The port should not < 1000");
+      }
+      if (port > 65536) {
+        throw new Error("The port should not > 65536");
+      }
+    }
+
+    if (patch["tproxy-port"]) {
+      const port = patch["tproxy-port"];
+      if (port < 1000) {
+        throw new Error("The port should not < 1000");
+      }
+      if (port > 65536) {
+        throw new Error("The port should not > 65536");
+      }
+    }
+
     if (patch["mixed-port"]) {
       const port = patch["mixed-port"];
+      if (port < 1000) {
+        throw new Error("The port should not < 1000");
+      }
+      if (port > 65536) {
+        throw new Error("The port should not > 65536");
+      }
+    }
+
+    if (patch["socks-port"]) {
+      const port = patch["socks-port"];
+      if (port < 1000) {
+        throw new Error("The port should not < 1000");
+      }
+      if (port > 65536) {
+        throw new Error("The port should not > 65536");
+      }
+    }
+
+    if (patch["port"]) {
+      const port = patch["port"];
       if (port < 1000) {
         throw new Error("The port should not < 1000");
       }
